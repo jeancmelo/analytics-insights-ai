@@ -67,13 +67,16 @@ if OPENAI_KEY:
 # --------- STYLE (tema claro, profissional) ---------
 st.markdown("""
 <style>
-/* fundo branco geral para casar com Looker Studio */
-html, body, .stApp, [data-testid="stAppViewContainer"], .main { background: #ffffff !important; color:#0f172a; }
-.main .block-container {max-width: 980px; padding-top: .8rem;}
-/* cartão Q&A único (pergunta+resposta) */
+/* base clara */
+html, body, .stApp, [data-testid="stAppViewContainer"], .main {
+  background:#ffffff !important; color:#0f172a;
+}
+.main .block-container {max-width: 980px; padding-top:.8rem;}
+
+/* cartão Q&A */
 .qa-block{
   background:#ffffff; border:1px solid #e5e7eb; border-radius:16px;
-  padding:16px 18px; margin: 14px 0; box-shadow: 0 6px 18px rgba(31,41,55,.08);
+  padding:16px 18px; margin:14px 0; box-shadow:0 6px 18px rgba(31,41,55,.08);
 }
 .qa-head{ display:flex; align-items:center; gap:.5rem; margin-bottom:8px; }
 .qa-head .avatar{font-size:1.05rem}
@@ -84,30 +87,48 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .main { background: #fff
   font-weight:600; margin-bottom:10px;
 }
 .qa-a{ color:#0f172a; font-size:.98rem; line-height:1.5rem; }
-/* barra de pergunta no topo */
+
+/* barra de pergunta (input + enviar lado a lado) */
 .ask-card{
   background:#ffffff; border:1px solid #e5e7eb; border-radius:14px;
-  padding:12px 14px; box-shadow: 0 6px 18px rgba(31,41,55,.08); margin-bottom: 12px;
+  padding:12px 14px; box-shadow:0 6px 18px rgba(31,41,55,.08); margin-bottom:12px;
 }
-/* input + enviar na mesma linha */
 .send-wrap { display:flex; gap:10px; align-items:stretch; }
-.send-wrap textarea{ min-height:56px; }
-.send-wrap .stButton>button{
-  height:56px; align-self:stretch; border-radius:10px; padding:0 18px;
-  border:1px solid #e5e7eb; background:#111827; color:#fff;
+
+/* >>> INPUT CLARO COM TEXTO PRETO <<< */
+.send-wrap textarea,
+.stTextArea textarea {
+  min-height:56px;
+  background:#ffffff !important;
+  color:#111827 !important;
+  border:1px solid #e5e7eb !important;
+  border-radius:10px !important;
 }
-.send-wrap .stButton>button:hover{ filter:brightness(1.05); }
-/* botão limpar minimalista (link) alinhado à direita */
-.clear-wrap{ display:flex; justify-content:flex-end; margin-top:6px; }
-.clear-wrap .stButton>button{
-  background:transparent; border:0; color:#6b7280; padding:0; margin:0;
-  text-decoration: underline; cursor:pointer; font-size:.82rem;
+.send-wrap textarea::placeholder { color:#6b7280; }
+.send-wrap textarea:focus {
+  outline:none;
+  border-color:#94a3b8 !important;
+  box-shadow:0 0 0 3px rgba(37,99,235,.15);
 }
-.clear-wrap .stButton>button:hover{ color:#111827; }
-/* textarea borda clara */
-.stTextArea>div>div textarea { border:1px solid #e5e7eb; border-radius:10px; }
+
+/* >>> BOTÃO CLARO COM TEXTO PRETO <<< */
+.send-wrap .stButton>button {
+  height:56px;
+  align-self:stretch;
+  border-radius:10px;
+  padding:0 18px;
+  background:#f8fafc !important;     /* claro */
+  color:#111827 !important;           /* texto preto */
+  border:1px solid #e5e7eb !important;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.send-wrap .stButton>button:hover {
+  background:#f1f5f9 !important;
+  border-color:#cbd5e1 !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 # --------- Helpers: SQL ---------
 def sanitize_sql(text: str) -> str:
