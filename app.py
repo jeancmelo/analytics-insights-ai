@@ -2,6 +2,8 @@ import os, json, re
 import pandas as pd
 import streamlit as st
 from datetime import date, timedelta
+from openai import OpenAI
+import httpx
 
 # ========= EMBED NO LOOKER STUDIO =========
 try:
@@ -54,8 +56,13 @@ if SA_JSON:
         st.error(f"Erro ao iniciar BigQuery Client: {e}")
 
 # ======== OPENAI CLIENT ========
-from openai import OpenAI
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+client = None
+if OPENAI_API_KEY:
+    # client HTTP explícito, sem proxies herdados de env
+    http_client = httpx.Client(timeout=60.0)  # sem proxies por padrão
+    client = OpenAI(api_key=OPENAI_API_KEY, http_client=http_client)
+    
 
 # ======== UTIL ========
 @st.cache_data(show_spinner=False)
