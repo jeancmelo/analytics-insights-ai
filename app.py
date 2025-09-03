@@ -168,7 +168,7 @@ if "messages" not in st.session_state:
 with st.form("chat_form", clear_on_submit=True):
     q = st.text_area(
         "Faça sua pergunta:",
-        placeholder="Ex.: Top 10 queries mobile no Brasil em agosto de 2024",
+        placeholder="Ex.: Top 10 queries mobile em agosto de 2025",
         height=80,
     )
     submitted = st.form_submit_button("Enviar")
