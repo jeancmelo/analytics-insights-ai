@@ -67,13 +67,52 @@ if OPENAI_KEY:
 # --------- STYLE (tema claro, profissional) ---------
 st.markdown("""
 <style>
-/* base clara */
+/* --- base branca --- */
 html, body, .stApp, [data-testid="stAppViewContainer"], .main {
   background:#ffffff !important; color:#0f172a;
 }
 .main .block-container {max-width: 980px; padding-top:.8rem;}
 
-/* cartão Q&A */
+/* --- INPUT CLARO (textarea e text input) --- */
+.stTextArea textarea, .stTextInput input, textarea {
+  background:#ffffff !important;
+  color:#111827 !important;
+  border:1px solid #e5e7eb !important;
+  border-radius:10px !important;
+}
+.stTextArea textarea::placeholder, .stTextInput input::placeholder, textarea::placeholder {
+  color:#334155 !important; opacity:1 !important;   /* placeholder visível */
+}
+.stTextArea textarea:focus, .stTextInput input:focus, textarea:focus {
+  outline:none !important;
+  border-color:#94a3b8 !important;
+  box-shadow:0 0 0 3px rgba(37,99,235,.15) !important;
+}
+
+/* --- BOTÕES CLAROS (pega qualquer botão do Streamlit) --- */
+.stButton > button,
+button[kind],
+[data-testid="baseButton-secondary"],
+[data-testid="baseButton-primary"],
+[data-testid="stBaseButton-secondary"],
+[data-testid="stBaseButton-primary"] {
+  background:#f8fafc !important;   /* claro */
+  color:#111827 !important;        /* texto preto */
+  border:1px solid #e5e7eb !important;
+  box-shadow:none !important;
+  border-radius:10px !important;
+}
+.stButton > button:hover,
+button[kind]:hover,
+[data-testid="baseButton-secondary"]:hover,
+[data-testid="baseButton-primary"]:hover,
+[data-testid="stBaseButton-secondary"]:hover,
+[data-testid="stBaseButton-primary"]:hover {
+  background:#f1f5f9 !important;
+  border-color:#cbd5e1 !important;
+}
+
+/* cartões e tipografia (mantém seu visual claro) */
 .qa-block{
   background:#ffffff; border:1px solid #e5e7eb; border-radius:16px;
   padding:16px 18px; margin:14px 0; box-shadow:0 6px 18px rgba(31,41,55,.08);
@@ -88,46 +127,15 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .main {
 }
 .qa-a{ color:#0f172a; font-size:.98rem; line-height:1.5rem; }
 
-/* barra de pergunta (input + enviar lado a lado) */
 .ask-card{
   background:#ffffff; border:1px solid #e5e7eb; border-radius:14px;
   padding:12px 14px; box-shadow:0 6px 18px rgba(31,41,55,.08); margin-bottom:12px;
 }
 .send-wrap { display:flex; gap:10px; align-items:stretch; }
-
-/* >>> INPUT CLARO COM TEXTO PRETO <<< */
-.send-wrap textarea,
-.stTextArea textarea {
-  min-height:56px;
-  background:#ffffff !important;
-  color:#111827 !important;
-  border:1px solid #e5e7eb !important;
-  border-radius:10px !important;
-}
-.send-wrap textarea::placeholder { color:#6b7280; }
-.send-wrap textarea:focus {
-  outline:none;
-  border-color:#94a3b8 !important;
-  box-shadow:0 0 0 3px rgba(37,99,235,.15);
-}
-
-/* >>> BOTÃO CLARO COM TEXTO PRETO <<< */
-.send-wrap .stButton>button {
-  height:56px;
-  align-self:stretch;
-  border-radius:10px;
-  padding:0 18px;
-  background:#f8fafc !important;     /* claro */
-  color:#111827 !important;           /* texto preto */
-  border:1px solid #e5e7eb !important;
-  box-shadow:0 1px 2px rgba(0,0,0,.04);
-}
-.send-wrap .stButton>button:hover {
-  background:#f1f5f9 !important;
-  border-color:#cbd5e1 !important;
-}
+.send-wrap textarea{ min-height:56px; }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # --------- Helpers: SQL ---------
