@@ -85,6 +85,22 @@ st.markdown("""
 .btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
 
 [class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important; }
+
+.block-container  {padding: 3rem 1rem 10rem  !important;}
+/* Key Findings – lista numerada elegante */
+.kf-title{{ font-weight:700; margin-bottom:.4rem; }}
+.kf-list{{ counter-reset:item; list-style:none; padding-left:0; margin:0; }}
+.kf-list li{{ counter-increment:item; margin:.55rem 0; }}
+.kf-list li::before{{
+  content: counter(item) ".";
+  font-weight:700; margin-right:.35rem; color:#111827;
+}}
+.kf-item-title{{ font-weight:700; display:inline; }}
+.kf-item-text{{ display:block; margin-top:.15rem; color:#0f172a; }}
+
+/* divisória */
+.divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
+
 </style>
 """, unsafe_allow_html=True)
 
