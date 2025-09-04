@@ -85,7 +85,7 @@ st.markdown("""
 .btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
 .btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
 
-[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important; }
+[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important; margin-bottom: 6% !important;}
 
 .block-container  {padding: 3rem 1rem 10rem  !important;}
 /* Key Findings – lista numerada elegante */
@@ -93,8 +93,8 @@ st.markdown("""
 .kf-list li { counter-increment:item; margin:.55rem 0; }
 .kf-list li::before { content: counter(item) "."; font-weight:700; margin-right:.35rem; color:#111827; }
 .kf-item-title { font-weight:700; }
-.kf-item-text { display:block; margin-top:.15rem; color:#0f172a; }
-
+.kf-item-text { display:block; margin-top:.15rem; color:#fff; }
+.kf-title { font-weight:700; margin-bottom: 5%;}
 
 /* divisória */
 .divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
