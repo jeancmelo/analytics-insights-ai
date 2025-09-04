@@ -160,7 +160,9 @@ textarea:focus{{ outline:none !important; border-color:#94a3b8 !important;
 [data-testid="stAppViewContainer"] .stButton > button:disabled {
   background:#f3f4f6 !important; color:#9ca3af !important; border-color:#e5e7eb !important; opacity:1 !important;
 }
-
+.st-emotion-cache-13k62yr { background-color: #ffffff; }
+.st-bx {background-color: #f8fafc }
+.st-emotion-cache-103r2r1 { gap: 3px !important; }
 p { color: #000 !important; }
 .st-emotion-cache-1sy6v2f  { background-color: #ffffff;  border: 1px solid #cbd5e1; }
 </style>
