@@ -60,75 +60,29 @@ if OPENAI_KEY:
 # --------- STYLE (tema claro, painel estreito como no print) ---------
 st.markdown("""
 <style>
-/* painel estreito: deixa a página com largura menor para parecer uma side bar */
-.main .block-container { max-width: 360px; padding-top: .6rem; }
-
-/* base branca */
-html, body, .stApp, [data-testid="stAppViewContainer"], .main {
-  background:#ffffff !important; color:#0f172a;
+/* (1) QUICK PROMPTS: botões claros, como o textarea */
+[data-testid="stAppViewContainer"] .chips .stButton > button {
+  background: #f8fafc !important;          /* claro */
+  background-color: #f8fafc !important;
+  color: #111827 !important;                /* texto preto */
+  border: 1px solid #e5e7eb !important;     /* borda clara */
+  box-shadow: none !important;
 }
-
-/* header fino */
-h3 { margin: 0 0 .6rem 0; font-weight: 700; }
-
-/* cartão do painel */
-.panel-card{
-  background:#ffffff; border:1px solid #e5e7eb; border-radius:14px;
-  padding:12px 14px; box-shadow:0 6px 18px rgba(31,41,55,.08); margin-bottom:12px;
+[data-testid="stAppViewContainer"] .chips .stButton > button:hover {
+  background: #f1f5f9 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
 }
+/* garante texto preto mesmo se o tema envolver dentro de <p>/<span> */
+.chips .stButton > button p,
+.chips .stButton > button span { color:#111827 !important; }
 
-/* chips de prompts */
-.chips{ display:flex; flex-wrap:wrap; gap:8px; }
-.chips .chip button{
-  background:#f8fafc !important; color:#111827 !important;
-  border:1px solid #e5e7eb !important; border-radius:999px !important;
-  padding:6px 10px; font-size:.85rem;
-}
+/* (2) LABEL “Type your question”: tom cinza escuro para aparecer */
+[data-testid="stCaption"] { color:#374151 !important; }  /* afeta 'Data source', 'Quick prompts' e 'Type your question' */
 
-/* input + botões */
-.input-row{ display:flex; gap:8px; }
-.textarea textarea{
-  min-height:74px; background:#ffffff !important; color:#111827 !important;
-  border:1px solid #e5e7eb !important; border-radius:10px !important;
-}
-.textarea textarea::placeholder{ color:#334155; opacity:1; }
-
-.btn-primary button{
-  height:74px; background:#2563eb !important; color:#ffffff !important;
-  border:1px solid #2563eb !important; border-radius:10px !important; padding:0 16px;
-}
-.btn-primary button:hover{ background:#1d4ed8 !important; border-color:#1d4ed8 !important; }
-
-.btn-secondary button{
-  background:#f8fafc !important; color:#111827 !important;
-  border:1px solid #e5e7eb !important; border-radius:10px !important; padding:8px 12px;
-}
-.btn-secondary button:hover{ background:#f1f5f9 !important; border-color:#cbd5e1 !important; }
-
-/* bloco Key Findings */
-.kf-card{
-  background:#ffffff; border:1px solid #e5e7eb; border-radius:14px;
-  padding:12px 14px; box-shadow:0 6px 18px rgba(31,41,55,.08); 
-}
-.kf-title{ font-weight:700; margin-bottom:.4rem; }
-.kf-item{ margin:.5rem 0; }
-.kf-item strong{ color:#111827; }
-
-/* divisória sutil */
-.divider { height:1px; background:#e5e7eb; margin:.6rem 0; }
-
-/* dropdowns/selects */
-[data-baseweb="select"]>div{ border-radius:10px; }
-
-/* ADD Manuais */
-
-.st-emotion-cache-13k62yr { background-color: #ffffff; }
-.st-emotion-cache-usbviu { color: #000; }
-.st-bx {background-color: #f8fafc }
-.st-emotion-cache-103r2r1 { gap: 3px !important; }
-p { color: #000 !important; }
-.st-emotion-cache-1sy6v2f  { background-color: #ffffff;  border: 1px solid #cbd5e1; }
-
+/* (3) Diminuir o espaçamento entre SEND e CLEAR (igual aos chips: 8px) */
+.btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
+.btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
 </style>
 """, unsafe_allow_html=True)
 
