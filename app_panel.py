@@ -2,6 +2,7 @@ import os, re, json, time
 from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
+from html import escape
 
 # ========== EMBED NO LOOKER STUDIO ==========
 try:
@@ -283,8 +284,9 @@ if st.session_state.insights:
     else:
         st.markdown('<ol class="kf-list">', unsafe_allow_html=True)
         for it in block["findings"]:
-            title = html.escape(it.get("title","Insight"))
-            text  = html.escape(it.get("text",""))
+            title = escape(str(it.get("title","Insight")))
+            text  = escape(str(it.get("text","")))
+
             st.markdown(
                 f'<li><span class="kf-item-title">{title}</span>'
                 f'<span class="kf-item-text">{text}</span></li>',
