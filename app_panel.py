@@ -61,6 +61,58 @@ if OPENAI_KEY:
 # --------- STYLE (tema claro, coluna lateral “tipo print”) ---------
 st.markdown("""
 <style>
+/* Base clara e coluna esquerda */
+html, body, .stApp, [data-testid="stAppViewContainer"], .main {{
+  background:#ffffff !important; color:#0f172a;
+}}
+/* a block-container ocupa 100% da largura disponível do iframe,
+   mas fica limitada a --panel-w e alinhada à esquerda (sem centralizar) */
+:root {{ --panel-w: {PANEL_WIDTH}px; }}
+.main .block-container {{
+  max-width: var(--panel-w);
+  width: 100%;
+  padding-top: .6rem;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}}
+
+/* cards */
+.card {{
+  background:#ffffff; border:1px solid #e5e7eb; border-radius:14px;
+  box-shadow:0 6px 18px rgba(31,41,55,.08);
+}}
+.panel-card {{ padding:12px 14px; margin-bottom:12px; }}
+.kf-card    {{ padding:12px 14px; }}
+
+/* sticky (opcional) – mantém os controles visíveis quando rola */
+.sticky {{ position: sticky; top: 8px; z-index: 2; }}
+
+/* títulos */
+h3 {{ margin:.1rem 0 .6rem 0; font-weight:700; }}
+
+/* selects e inputs */
+[data-baseweb="select"]>div{{ border-radius:10px; }}
+textarea, .stTextArea textarea {{
+  min-height:74px !important; background:#ffffff !important; color:#111827 !important;
+  border:1px solid #e5e7eb !important; border-radius:10px !important;
+}}
+textarea::placeholder{{ color:#334155 !important; opacity:1 !important; }}
+textarea:focus{{ outline:none !important; border-color:#94a3b8 !important;
+  box-shadow:0 0 0 3px rgba(37,99,235,.15) !important; }}
+/* Key Findings – lista numerada elegante */
+.kf-title{{ font-weight:700; margin-bottom:.4rem; }}
+.kf-list{{ counter-reset:item; list-style:none; padding-left:0; margin:0; }}
+.kf-list li{{ counter-increment:item; margin:.55rem 0; }}
+.kf-list li::before{{
+  content: counter(item) ".";
+  font-weight:700; margin-right:.35rem; color:#111827;
+}}
+.kf-item-title{{ font-weight:700; display:inline; }}
+.kf-item-text{{ display:block; margin-top:.15rem; color:#0f172a; }}
+
+/* divisória */
+.divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
+
 /* ==== BOTÕES CLAROS (força geral) ==== */
 :root{
   --btn-bg:#f8fafc;          /* branco suave */
