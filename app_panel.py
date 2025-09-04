@@ -95,8 +95,8 @@ st.markdown("""
   content: counter(item) ".";
   font-weight:700; margin-right:.35rem; color:#111827;
 }}
-.kf-item-title{{ font-weight:700; display:inline; }}
-.kf-item-text{{ display:block; margin-top:.15rem; color:#0f172a; }}
+.kf-item{{ font-weight:700; display:inline; }}
+.kf-item{{ display:block; margin-top:.15rem; color:#0f172a; }}
 
 /* divisória */
 .divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
