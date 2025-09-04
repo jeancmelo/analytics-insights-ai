@@ -85,7 +85,7 @@ st.markdown("""
 .btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
 .btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
 
-[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important;}
+[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important; background: #ffffff !important;}
 /* combinado (cobre ambos os casos) */
 li[class^="st-emotion-cache-"],
 li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; background-color: #f1f5f9}
@@ -232,7 +232,7 @@ with st.container():
         send = st.button("Send", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
         st.markdown('<div class="btn-secondary">', unsafe_allow_html=True)
-       #clear = st.button("Clear insights", use_container_width=True)
+        clear = st.button("Clear insights", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)  # fecha panel-card
