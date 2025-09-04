@@ -83,6 +83,8 @@ st.markdown("""
 /* (3) Diminuir o espaçamento entre SEND e CLEAR (igual aos chips: 8px) */
 .btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
 .btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
+
+.st-emotion-cache-usbviu { gap: 0 !important; row-gap: 5px !important; }
 </style>
 """, unsafe_allow_html=True)
 
