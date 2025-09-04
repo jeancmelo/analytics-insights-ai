@@ -88,15 +88,12 @@ st.markdown("""
 
 .block-container  {padding: 3rem 1rem 10rem  !important;}
 /* Key Findings – lista numerada elegante */
-.kf-title{{ font-weight:700; margin-bottom:.4rem; }}
-.kf-list{{ counter-reset:item; list-style:none; padding-left:0; margin:0; }}
-.kf-list li{{ counter-increment:item; margin:.55rem 0; }}
-.kf-list li::before{{
-  content: counter(item) ".";
-  font-weight:700; margin-right:.35rem; color:#111827;
-}}
-.kf-item-title{{ font-weight:700 !important; display:inline !important}}
-.kf-item{{ display:block !important; margin-top:.15rem !important; color:#0f172a !important}}
+.kf-list { counter-reset:item; list-style:none; padding-left:0; margin:0; }
+.kf-list li { counter-increment:item; margin:.55rem 0; }
+.kf-list li::before { content: counter(item) "."; font-weight:700; margin-right:.35rem; color:#111827; }
+.kf-item-title { font-weight:700; }
+.kf-item-text { display:block; margin-top:.15rem; color:#0f172a; }
+
 
 /* divisória */
 .divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
@@ -275,17 +272,27 @@ if st.session_state.pending is not None:
         st.session_state.pending = None
         st.rerun()
 
-# --------- Render: Key Findings (numerados) ---------
+# --------- Render: Key Findings (mais recente) ---------
 if st.session_state.insights:
-    st.markdown('<div class="kf-card">', unsafe_allow_html=True)
+    block = st.session_state.insights[0]
+    st.markdown('<div class="card kf-card">', unsafe_allow_html=True)
     st.markdown('<div class="kf-title">Key Findings</div>', unsafe_allow_html=True)
-    block = st.session_state.insights[0]  # mostra o mais recente
+
     if block["findings"] is None:
         st.write("Gerando insights…")
     else:
-        for i, it in enumerate(block["findings"], start=1):
-            st.markdown(f'<div class="kf-item"><strong>{i}. {it.get("title","Insight")}</strong><br>{it.get("text","")}</div>', unsafe_allow_html=True)
+        st.markdown('<ol class="kf-list">', unsafe_allow_html=True)
+        for it in block["findings"]:
+            title = html.escape(it.get("title","Insight"))
+            text  = html.escape(it.get("text",""))
+            st.markdown(
+                f'<li><span class="kf-item-title">{title}</span>'
+                f'<span class="kf-item-text">{text}</span></li>',
+                unsafe_allow_html=True
+            )
+        st.markdown('</ol>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
 
     # opcional: mostrar SQL usada
     with st.expander("SQL usada (debug)"):
