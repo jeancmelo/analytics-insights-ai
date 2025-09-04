@@ -89,7 +89,7 @@ st.markdown("""
 
 /* combinado (cobre ambos os casos) */
 li[class^="st-emotion-cache-"],
-li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; background-color: #f1f5f9}
+li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; padding: 0px 0px 0px 0.6em !important;}
 
 .block-container  {padding: 3rem 1rem 10rem  !important;}
 /* Key Findings – lista numerada elegante */
