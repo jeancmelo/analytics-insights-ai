@@ -85,7 +85,8 @@ st.markdown("""
 .btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
 .btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
 
-[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important; background: #ffffff !important;}
+[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important;}
+
 /* combinado (cobre ambos os casos) */
 li[class^="st-emotion-cache-"],
 li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; background-color: #f1f5f9}
@@ -96,7 +97,7 @@ li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; background-color
 .kf-list li { counter-increment:item; margin:.55rem 0; }
 .kf-list li::before { content: counter(item) "."; font-weight:700; margin-right:.35rem; color:#111827; }
 .kf-item-title { font-weight:700; }
-.kf-item-text { display:block; margin-top:.15rem; color:#fff; }
+.kf-item-text { display:block; margin-top:.15rem; }
 .kf-title { font-weight:700; margin-bottom: 5%;}
 
 /* divisória */
