@@ -43,7 +43,67 @@ if SA_JSON:
 from google.cloud import bigquery
 @st.cache_resource(show_spinner=False)
 def get_bq(): return bigquery.Client()
-bq = get_bq() if SA_JSON else None
+import os, json, base64
+from google.cloud import bigquery
+from google.oauth2 import service_account
+import streamlit as st
+
+def _load_sa_info_from_env():
+    """
+    Tenta carregar as credenciais de service account de:
+    1) GOOGLE_APPLICATION_CREDENTIALS_JSON (JSON)
+    2) SA_JSON (JSON)
+    3) GOOGLE_APPLICATION_CREDENTIALS_JSON_B64 (Base64 do JSON)
+    4) SA_JSON_B64 (Base64 do JSON)
+    Retorna um dict com o JSON ou None.
+    """
+    raw = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv("SA_JSON")
+    if raw:
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            # Pode ser Base64 sem *_B64 — tenta decodificar
+            try:
+                return json.loads(base64.b64decode(raw).decode("utf-8"))
+            except Exception:
+                pass
+
+    raw_b64 = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON_B64") or os.getenv("SA_JSON_B64")
+    if raw_b64:
+        return json.loads(base64.b64decode(raw_b64).decode("utf-8"))
+
+    return None
+
+def _fix_private_key_newlines(sa_info: dict) -> dict:
+    """
+    Garante que o campo private_key tenha quebras de linha reais.
+    """
+    key = sa_info.get("private_key")
+    if key and "\\n" in key:
+        sa_info = sa_info.copy()
+        sa_info["private_key"] = key.replace("\\n", "\n")
+    return sa_info
+
+@st.cache_resource(show_spinner=False)
+def get_bq():
+    # 1) Se houver caminho de arquivo no padrão do SDK, deixe o google-auth resolver.
+    cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if cred_path and os.path.exists(cred_path):
+        # Opcional: defina GOOGLE_CLOUD_PROJECT se quiser garantir o project
+        return bigquery.Client()
+
+    # 2) Caso tenha JSON em env (texto ou base64), constrói Credentials manualmente.
+    sa_info = _load_sa_info_from_env()
+    if sa_info:
+        sa_info = _fix_private_key_newlines(sa_info)
+        creds = service_account.Credentials.from_service_account_info(sa_info)
+        project = os.getenv("GOOGLE_CLOUD_PROJECT") or sa_info.get("project_id")
+        return bigquery.Client(project=project, credentials=creds)
+
+    # 3) Fallback: tenta ADC normal (pode funcionar em GCP/Cloud Run com Workload Identity).
+    return bigquery.Client()
+
+bq = get_bq()
 
 @st.cache_data(show_spinner=False)
 def get_table_schema(table_fqn: str):
