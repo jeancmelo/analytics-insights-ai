@@ -292,25 +292,45 @@ if st.session_state.pending is not None:
                 st.session_state.insights[idx]["findings"] = findings
                 st.session_state.insights[idx]["sql"] = sql
 
-        elif current_source.startswith("Instagram"):
-            # --- Supermetrics: Instagram (IGI) ---
+         elif current_source.startswith("Instagram"):
             ig = instagram_adapter_from_env()
-            from datetime import date, timedelta
-            end = date.today()
-            start = end - timedelta(days=30)
-            fields = os.getenv("IGI_FIELDS",
-                "date,account_id,media_id,media_permalink,media_type,caption,media_reach,media_impressions,likes,comments,saves,shares,video_views,total_interactions"
+        
+            # Lê campos e faixas de data das ENVs
+            fields_env = os.getenv(
+                "IGI_FIELDS",
+                "month,followers_count,follows_count"
             ).split(",")
-            df = ig.query(
-                fields=[f.strip() for f in fields],
-                date_from=start.isoformat(),
-                date_to=end.isoformat(),
-                time_granularity="day"
-            )
-            findings = ai_key_findings(q_user, df, f"Supermetrics IGI fields={','.join(fields)} {start}..{end}", n=6)
+        
+            # Se a dimensão "month" estiver nos campos, não force granularity=day
+            has_month = any(f.strip().lower() == "month" for f in fields_env)
+            gran = None if has_month else "day"
+        
+            # Se você definiu IGI_DATE_RANGE_TYPE, priorize-o (mais robusto para IGI)
+            drt = (os.getenv("IGI_DATE_RANGE_TYPE") or "").strip() or None
+        
+            if drt:
+                df = ig.query(
+                    fields=[f.strip() for f in fields_env],
+                    date_range_type=drt,
+                    time_granularity=gran
+                )
+                sql_ctx = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} range={drt}"
+            else:
+                # fallback: últimos 30 dias (se não houver IGI_DATE_RANGE_TYPE)
+                end = date.today()
+                start = end - timedelta(days=30)
+                df = ig.query(
+                    fields=[f.strip() for f in fields_env],
+                    date_from=start.isoformat(),
+                    date_to=end.isoformat(),
+                    time_granularity=gran
+                )
+                sql_ctx = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} {start}..{end}"
+        
+            findings = ai_key_findings(q_user, df, sql_ctx, n=6)
             st.session_state.insights[idx]["findings"] = findings
             st.session_state.insights[idx]["sql"] = "Supermetrics (IGI)"
-
+        
         elif current_source.startswith("Facebook"):
             # --- Supermetrics: Facebook Pages (FBI/FPI) ---
             fb = facebook_pages_adapter_from_env()
