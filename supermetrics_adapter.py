@@ -147,16 +147,13 @@ class SupermetricsAdapter:
     def query(
         self,
         fields: List[str],
-        date_from: Optional[str] = None,         # "YYYY-MM-DD"
-        date_to: Optional[str] = None,           # "YYYY-MM-DD"
-        date_range_type: Optional[str] = None,   # ex.: "last_30_days", "yesterday"
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        date_range_type: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         max_rows: int = 10000,
-        time_granularity: Optional[str] = None,  # ex.: "day"
+        time_granularity: Optional[str] = None,
     ) -> pd.DataFrame:
-        """
-        Executa uma consulta e consolida a paginação automaticamente.
-        """
         payload: Dict[str, Any] = {
             "ds_id": self.ds_id,
             "ds_accounts": ",".join(self.ds_accounts),
@@ -164,14 +161,23 @@ class SupermetricsAdapter:
             "max_rows": max_rows,
             "fields": [f.strip() for f in fields if f and f.strip()],
         }
-
+    
         if date_range_type:
             payload["date_range_type"] = date_range_type
         else:
             if date_from:
-                payload["date_from"] = date_from
+                payload["date_from"]  = date_from     # nome 1
+                payload["start_date"] = date_from     # nome 2 (sinônimo)
             if date_to:
-                payload["date_to"] = date_to
+                payload["date_to"] = date_to          # nome 1
+                payload["end_date"] = date_to         # nome 2 (sinônimo)
+    
+        if time_granularity:
+            payload["time_granularity"] = time_granularity
+    
+        if filters:
+            payload["filters"] = filters
+
 
         if time_granularity:
             payload["time_granularity"] = time_granularity
