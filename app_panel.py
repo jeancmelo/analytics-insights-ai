@@ -3,6 +3,11 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from html import escape
+from supermetrics_adapter import (
+    instagram_adapter_from_env,
+    facebook_pages_adapter_from_env,
+)
+
 
 # ========== EMBED NO LOOKER STUDIO ==========
 try:
@@ -203,7 +208,15 @@ if "pending" not in st.session_state:
 st.markdown("### Generative Insights")
 with st.container():
     st.markdown('<div class="panel-card">', unsafe_allow_html=True)
-    source = st.selectbox("Data source", ["Google Search Console (BigQuery)", "Google Analytics 4 (em breve)", "Meta Ads (em breve)"], index=0)
+    source = st.selectbox(
+        "Data source",
+        [
+            "Google Search Console (BigQuery)",
+            "Instagram Insights (Supermetrics)",
+            "Facebook Page Insights (Supermetrics)",
+        ],
+        index=0
+    )
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
     # Quick prompts (chips)
@@ -260,19 +273,72 @@ if send and q and q.strip():
 if st.session_state.pending is not None:
     idx = st.session_state.pending
     try:
-        schema_cols = get_table_schema(BQ_TABLE) if bq else []
-        sql = build_sql_with_ai(st.session_state.insights[idx]["q"], BQ_TABLE, schema_cols)
-        if not sql or not sql_is_safe(sql):
-            st.session_state.insights[idx]["findings"] = [{"title":"Consulta inválida","text":"Não foi possível gerar uma SQL segura. Refaça a pergunta especificando período/dimensões."}]
-            st.session_state.insights[idx]["sql"] = sql or ""
-        else:
-            sql = ensure_limit(sql)
-            df  = bq.query(sql).result().to_dataframe()
-            findings = ai_key_findings(st.session_state.insights[idx]["q"], df, sql, n=6)
+        q_user = st.session_state.insights[idx]["q"]
+        current_source = source  # pega a fonte selecionada na UI
+
+        if current_source.startswith("Google Search Console"):
+            # --- fluxo original: BigQuery + SQL ---
+            schema_cols = get_table_schema(BQ_TABLE) if bq else []
+            sql = build_sql_with_ai(q_user, BQ_TABLE, schema_cols)
+            if not sql or not sql_is_safe(sql):
+                st.session_state.insights[idx]["findings"] = [
+                    {"title":"Consulta inválida","text":"Não foi possível gerar uma SQL segura. Refine a pergunta."}
+                ]
+                st.session_state.insights[idx]["sql"] = sql or ""
+            else:
+                sql = ensure_limit(sql)
+                df  = bq.query(sql).result().to_dataframe()
+                findings = ai_key_findings(q_user, df, sql, n=6)
+                st.session_state.insights[idx]["findings"] = findings
+                st.session_state.insights[idx]["sql"] = sql
+
+        elif current_source.startswith("Instagram"):
+            # --- Supermetrics: Instagram (IGI) ---
+            ig = instagram_adapter_from_env()
+            from datetime import date, timedelta
+            end = date.today()
+            start = end - timedelta(days=30)
+            fields = os.getenv("IGI_FIELDS",
+                "date,account_id,media_id,media_permalink,media_type,caption,media_reach,media_impressions,likes,comments,saves,shares,video_views,total_interactions"
+            ).split(",")
+            df = ig.query(
+                fields=[f.strip() for f in fields],
+                date_from=start.isoformat(),
+                date_to=end.isoformat(),
+                time_granularity="day"
+            )
+            findings = ai_key_findings(q_user, df, f"Supermetrics IGI fields={','.join(fields)} {start}..{end}", n=6)
             st.session_state.insights[idx]["findings"] = findings
-            st.session_state.insights[idx]["sql"] = sql
+            st.session_state.insights[idx]["sql"] = "Supermetrics (IGI)"
+
+        elif current_source.startswith("Facebook"):
+            # --- Supermetrics: Facebook Pages (FBI/FPI) ---
+            fb = facebook_pages_adapter_from_env()
+            from datetime import date, timedelta
+            end = date.today()
+            start = end - timedelta(days=30)
+            fields = os.getenv("FPI_FIELDS",
+                "date,page_id,post_id,permalink,post_type,message,post_reach,post_impressions,post_engaged_users,reactions_total,comments,shares,link_clicks,video_views"
+            ).split(",")
+            df = fb.query(
+                fields=[f.strip() for f in fields],
+                date_from=start.isoformat(),
+                date_to=end.isoformat(),
+                time_granularity="day"
+            )
+            findings = ai_key_findings(q_user, df, f"Supermetrics FB fields={','.join(fields)} {start}..{end}", n=6)
+            st.session_state.insights[idx]["findings"] = findings
+            st.session_state.insights[idx]["sql"] = "Supermetrics (FB)"
+
+        else:
+            st.session_state.insights[idx]["findings"] = [
+                {"title":"Fonte não suportada","text":"Selecione GSC, Instagram ou Facebook."}
+            ]
+            st.session_state.insights[idx]["sql"] = ""
+
     except Exception as e:
         st.session_state.insights[idx]["findings"] = [{"title":"Erro ao consultar","text": str(e)}]
+        st.session_state.insights[idx]["sql"] = ""
     finally:
         st.session_state.pending = None
         st.rerun()
