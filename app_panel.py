@@ -8,7 +8,6 @@ from supermetrics_adapter import (
     facebook_pages_adapter_from_env,
 )
 
-
 # ========== EMBED NO LOOKER STUDIO ==========
 try:
     from streamlit.web.server import websocket_headers as wh
@@ -55,7 +54,7 @@ def get_table_schema(table_fqn: str):
     tbl = bq.get_table(table_fqn)
     return [(s.name, s.field_type) for s in tbl.schema]
 
-# --------- OpenAI (sem herdar proxies) ---------
+# --------- OpenAI ---------
 from openai import OpenAI
 import httpx
 client = None
@@ -63,69 +62,112 @@ if OPENAI_KEY:
     http_client = httpx.Client(timeout=60.0, follow_redirects=True, trust_env=False)
     client = OpenAI(api_key=OPENAI_KEY, http_client=http_client)
 
-# --------- STYLE (tema claro, painel estreito como no print) ---------
+# --------- STYLE FIXO (tema claro + classes próprias) ---------
 st.markdown("""
 <style>
-/* (1) QUICK PROMPTS: botões claros, como o textarea */
-[data-testid="stAppViewContainer"] .chips .stButton > button {
-  background: #f8fafc !important;          /* claro */
-  background-color: #f8fafc !important;
-  color: #111827 !important;                /* texto preto */
-  border: 1px solid #e5e7eb !important;     /* borda clara */
-  box-shadow: none !important;
-}
-[data-testid="stAppViewContainer"] .chips .stButton > button:hover {
-  background: #f1f5f9 !important;
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-}
-/* garante texto preto mesmo se o tema envolver dentro de <p>/<span> */
-.chips .stButton > button p,
-.chips .stButton > button span { color:#111827 !important; }
-
-/* (2) LABEL “Type your question”: tom cinza escuro para aparecer */
-[data-testid="stCaption"] { color:#374151 !important; }  /* afeta 'Data source', 'Quick prompts' e 'Type your question' */
-
-/* (3) Diminuir o espaçamento entre SEND e CLEAR (igual aos chips: 8px) */
-.btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
-.btn-row .stButton { margin:0 !important; }  /* remove margens extras do Streamlit */
-
-[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important;}
-
-/* combinado (cobre ambos os casos) */
-li[class^="st-emotion-cache-"],
-li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; padding: 0px 0px 0px 0.6em !important;}
-
-.block-container  {padding: 3rem 1rem 10rem  !important;}
-/* Key Findings – lista numerada elegante */
-.kf-list { counter-reset:item; list-style:none; padding-left:0; margin:0; }
-.kf-list li { counter-increment:item; margin:.55rem 0; }
-.kf-list li::before { content: counter(item) "."; font-weight:700; margin-right:.35rem; color:#111827; }
-.kf-item-title { font-weight:700; }
-.kf-item-text { display:block; margin-top:.15rem; }
-.kf-title { font-weight:700; margin-bottom: 5%;}
-
-/* divisória */
-.divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
-
-/* Background COlor White */
-
-.st-emotion-cache-13k62yr{
-    background: rgb(255 255 255) !important;
-    color: rgba(0, 0, 0, .87) !important;
-}
-.st-emotion-cache-15hul6a{
-    background-color: #fff !important;
-    border: 1px solid #5f636826 !important;
-}
-.st-bw{
-    background-color: #fff !important;
+body, .stApp {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
 
+/* Painel principal */
+.side-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Divisor */
+.divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 1rem 0;
+}
+
+/* Botões rápidos (chips) */
+.chip-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.chip-btn {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px;
+    padding: 6px 10px;
+    text-align: center;
+    cursor: pointer;
+}
+.chip-btn:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Botões principais */
+.btn-primary button {
+    background: #2563eb !important;
+    color: #fff !important;
+    border-radius: 8px;
+    padding: 8px 12px;
+    border: none;
+}
+.btn-primary button:hover {
+    background: #1e40af !important;
+}
+.btn-secondary button {
+    background: #f3f4f6 !important;
+    color: #111 !important;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    padding: 8px 12px;
+}
+.btn-secondary button:hover {
+    background: #e5e7eb !important;
+}
+
+/* Caixa de insights */
+.insights-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+}
+.kf-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+.kf-list {
+    counter-reset: item;
+    list-style: none;
+    padding-left: 0;
+}
+.kf-list li {
+    counter-increment: item;
+    margin: 0.5rem 0;
+}
+.kf-list li::before {
+    content: counter(item) ".";
+    font-weight: 700;
+    margin-right: 6px;
+    color: #111827;
+}
+.kf-item-title {
+    font-weight: 600;
+    margin-right: 4px;
+}
+.kf-item-text {
+    display: inline;
+    color: #333;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --------- Helpers: SQL ---------
+# --------- Helpers ---------
 def sanitize_sql(text: str) -> str:
     if not text: return ""
     t = text.strip()
@@ -147,24 +189,16 @@ def sql_is_safe(sql: str) -> bool:
 def ensure_limit(sql: str, default_limit:int=1000) -> str:
     return sql if re.search(r"\blimit\b\s+\d+\s*$", sql, re.I) else f"{sql}\nLIMIT {default_limit}"
 
-# --------- LLM prompts (gera SQL e depois findings em JSON) ---------
+# --------- AI SQL + Findings ---------
 def build_sql_with_ai(question: str, table_fqn: str, columns: list) -> str:
     if not client: return ""
     cols_txt = "\n".join([f"- {c} ({t})" for c, t in columns])
     system = (
         "Você é um gerador de SQL para BigQuery. "
-        "Responda SOMENTE com a consulta SQL (sem rótulos, sem explicações, sem cercas de código). "
-        "Use exclusivamente a tabela e colunas fornecidas; não use outras tabelas, nem DDL/DML."
+        "Responda SOMENTE com a consulta SQL."
     )
     user = (
-        f"Tabela alvo: `{table_fqn}`.\n"
-        f"Colunas disponíveis:\n{cols_txt}\n\n"
-        f"Regras específicas:\n"
-        f"- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
-        f"- CTR = SAFE_DIVIDE(SUM(clicks), SUM(impressions)).\n"
-        f"- Posição média = SAFE_DIVIDE(SUM(sum_top_position), SUM(impressions)) AS position.\n"
-        f"- Para rankings, ordene por clicks ou impressions e limite resultados longos.\n"
-        f"- Comece diretamente com SELECT.\n\n"
+        f"Tabela alvo: `{table_fqn}`.\nColunas disponíveis:\n{cols_txt}\n\n"
         f"Pergunta do usuário:\n{question}\n"
     )
     resp = client.chat.completions.create(
@@ -175,21 +209,17 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list) -> str:
     return sanitize_sql(resp.choices[0].message.content.strip())
 
 def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n:int=5):
-    """Pede findings em JSON: {"findings":[{"title":...,"text":...}]}"""
     if not client: return [{"title":"Configuração necessária","text":"Defina OPENAI_API."}]
     if df.empty:   return [{"title":"Sem dados","text":"Não há linhas para o recorte solicitado."}]
     preview = df.head(40).to_csv(index=False)
     system = (
         "Você é um analista de Marketing/SEO. Gere insights curtos e acionáveis "
-        "com base nos dados fornecidos. Responda em JSON válido com a chave 'findings'. "
-        "Não descreva SQL, não invente números; use apenas o que vier nos dados."
+        "com base nos dados fornecidos. Responda em JSON válido."
     )
     user = (
-        f"Gere até {n} findings (curtos). Estrutura:\n"
+        f"Gere até {n} findings. Estrutura:\n"
         f'{{"findings":[{{"title":"...", "text":"..."}}]}}\n\n'
-        f"Pergunta do usuário:\n{question}\n\n"
-        f"SQL executada (contexto – não comente):\n{sql_used}\n\n"
-        f"Prévia dos resultados (CSV até 40 linhas):\n{preview}"
+        f"Pergunta:\n{question}\n\nSQL:\n{sql_used}\n\nPrévia:\n{preview}"
     )
     resp = client.chat.completions.create(
         model=OPENAI_MODEL,
@@ -200,210 +230,131 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n:int=5):
     try:
         data = json.loads(resp.choices[0].message.content or "{}")
         findings = data.get("findings", [])
-        # saneamento simples
-        out = []
-        for it in findings[:n]:
-            title = str(it.get("title","Insight")).strip()[:120]
-            text  = str(it.get("text","")).strip()
-            if text:
-                out.append({"title":title or "Insight", "text":text})
-        return out or [{"title":"Sem insights","text":"Os dados retornados são muito curtos para gerar achados úteis."}]
+        return [{"title": it.get("title","Insight"), "text": it.get("text","")} for it in findings[:n]]
     except Exception:
-        # fallback: tudo em um finding único
         return [{"title":"Resumo", "text": resp.choices[0].message.content.strip()}]
 
 # --------- STATE ---------
 if "insights" not in st.session_state:
-    st.session_state.insights = []   # lista de blocos: {q:str, findings:[{title,text}], ts:float, sql:str}
+    st.session_state.insights = []
 if "pending" not in st.session_state:
-    st.session_state.pending = None  # índice do insight a processar
+    st.session_state.pending = None
 
-# --------- UI: Header + fonte de dados ---------
+# --------- UI ---------
 st.markdown("### Generative Insights")
 with st.container():
-    st.markdown('<div class="panel-card">', unsafe_allow_html=True)
+    st.markdown('<div class="side-panel">', unsafe_allow_html=True)
+
     source = st.selectbox(
         "Data source",
-        [
-            "Google Search Console (BigQuery)",
-            "Instagram Insights (Supermetrics)",
-            "Facebook Page Insights (Supermetrics)",
-        ],
+        ["Google Search Console (BigQuery)",
+         "Instagram Insights (Supermetrics)",
+         "Facebook Page Insights (Supermetrics)"],
         index=0
     )
-    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-    # Quick prompts (chips)
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
     st.caption("Quick prompts")
-    c1, c2 = st.columns(2)
-    with c1:
-        chip1 = st.button("Key findings for this period", key="chip1")
-    with c2:
-        chip2 = st.button("Compare with last month", key="chip2")
-    c3, c4 = st.columns(2)
-    with c3:
-        chip3 = st.button("Top queries & pages", key="chip3")
-    with c4:
-        chip4 = st.button("Any anomalies to highlight?", key="chip4")
+    st.markdown('<div class="chip-group">', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1: chip1 = st.button("Key findings for this period", key="chip1")
+    with col2: chip2 = st.button("Compare with last month", key="chip2")
+    col3, col4 = st.columns(2)
+    with col3: chip3 = st.button("Top queries & pages", key="chip3")
+    with col4: chip4 = st.button("Any anomalies to highlight?", key="chip4")
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-    # Pergunta + botões (enviar/limpar)
     st.caption("Type your question")
-    col_input, col_btns = st.columns([0.7, 0.3])
-    with col_input:
-        st.markdown('<div class="textarea">', unsafe_allow_html=True)
-        q = st.text_area(label=" ", label_visibility="collapsed", key="ask", height=90,
-                         placeholder="e.g., Give me 5 actionable insights for this dataset and the selected period.")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_btns:
-        st.markdown('<div class="btn-primary">', unsafe_allow_html=True)
-        send = st.button("Send", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('<div class="btn-secondary">', unsafe_allow_html=True)
-        clear = st.button("Clear insights", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    q = st.text_area(" ", key="ask", height=90,
+                     placeholder="e.g., Give me 5 actionable insights for this dataset.")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # fecha panel-card
+    st.markdown('<div class="btn-primary">', unsafe_allow_html=True)
+    send = st.button("Send", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Chips preenchem e enviam
+    st.markdown('<div class="btn-secondary">', unsafe_allow_html=True)
+    clear = st.button("Clear insights", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --------- Lógica chips ---------
 if chip1: q, send = "Give me 5 key findings for the current period.", True
-if chip2: q, send = "Summarize performance vs last month in up to 5 findings.", True
-if chip3: q, send = "Top queries and pages driving the results this period.", True
-if chip4: q, send = "Detect anomalies or significant day-to-day changes worth attention.", True
+if chip2: q, send = "Summarize performance vs last month.", True
+if chip3: q, send = "Top queries and pages this period.", True
+if chip4: q, send = "Detect anomalies or significant changes.", True
 
-# Limpar
+# --------- Limpar ---------
 if clear:
-    st.session_state.insights = []
-    st.session_state.pending = None
+    st.session_state.insights, st.session_state.pending = [], None
     st.rerun()
 
-# Enfileira um insight para processar
+# --------- Enfileira ---------
 if send and q and q.strip():
     st.session_state.insights.insert(0, {"q": q.strip(), "findings": None, "ts": time.time(), "sql": None})
     st.session_state.pending = 0
     st.rerun()
 
-# Processa UMA pendência
+# --------- Processa ---------
 if st.session_state.pending is not None:
     idx = st.session_state.pending
     try:
         q_user = st.session_state.insights[idx]["q"]
-        current_source = source  # pega a fonte selecionada na UI
+        current_source = source
 
         if current_source.startswith("Google Search Console"):
-            # --- fluxo original: BigQuery + SQL ---
             schema_cols = get_table_schema(BQ_TABLE) if bq else []
             sql = build_sql_with_ai(q_user, BQ_TABLE, schema_cols)
             if not sql or not sql_is_safe(sql):
-                st.session_state.insights[idx]["findings"] = [
-                    {"title":"Consulta inválida","text":"Não foi possível gerar uma SQL segura. Refine a pergunta."}
-                ]
-                st.session_state.insights[idx]["sql"] = sql or ""
+                findings = [{"title":"Consulta inválida","text":"Não foi possível gerar SQL segura."}]
             else:
                 sql = ensure_limit(sql)
                 df  = bq.query(sql).result().to_dataframe()
                 findings = ai_key_findings(q_user, df, sql, n=6)
-                st.session_state.insights[idx]["findings"] = findings
-                st.session_state.insights[idx]["sql"] = sql
+            st.session_state.insights[idx].update({"findings": findings, "sql": sql})
 
         elif current_source.startswith("Instagram"):
             ig = instagram_adapter_from_env()
-        
-            # Lê campos e faixas de data das ENVs
-            fields_env = os.getenv(
-                "IGI_FIELDS",
-                "month,followers_count,follows_count"
-            ).split(",")
-        
-            # Se a dimensão "month" estiver nos campos, não force granularity=day
-            has_month = any(f.strip().lower() == "month" for f in fields_env)
-            gran = None if has_month else "day"
-        
-            # Se você definiu IGI_DATE_RANGE_TYPE, priorize-o (mais robusto para IGI)
-            drt = (os.getenv("IGI_DATE_RANGE_TYPE") or "").strip() or None
-        
-            if drt:
-                df = ig.query(
-                    fields=[f.strip() for f in fields_env],
-                    date_range_type=drt,
-                    time_granularity=gran
-                )
-                sql_ctx = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} range={drt}"
-            else:
-                # fallback: últimos 30 dias (se não houver IGI_DATE_RANGE_TYPE)
-                end = date.today()
-                start = end - timedelta(days=30)
-                df = ig.query(
-                    fields=[f.strip() for f in fields_env],
-                    date_from=start.isoformat(),
-                    date_to=end.isoformat(),
-                    time_granularity=gran
-                )
-                sql_ctx = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} {start}..{end}"
-        
-            findings = ai_key_findings(q_user, df, sql_ctx, n=6)
-            st.session_state.insights[idx]["findings"] = findings
-            st.session_state.insights[idx]["sql"] = "Supermetrics (IGI)"
+            fields_env = os.getenv("IGI_FIELDS","month,followers_count").split(",")
+            end = date.today(); start = end - timedelta(days=30)
+            df = ig.query(fields=fields_env, date_from=start.isoformat(), date_to=end.isoformat())
+            findings = ai_key_findings(q_user, df, "Supermetrics IGI", n=6)
+            st.session_state.insights[idx].update({"findings": findings, "sql": "Supermetrics (IGI)"})
 
-        
         elif current_source.startswith("Facebook"):
-            # --- Supermetrics: Facebook Pages (FBI/FPI) ---
             fb = facebook_pages_adapter_from_env()
-            from datetime import date, timedelta
-            end = date.today()
-            start = end - timedelta(days=30)
-            fields = os.getenv("FPI_FIELDS",
-                "date,page_id,post_id,permalink,post_type,message,post_reach,post_impressions,post_engaged_users,reactions_total,comments,shares,link_clicks,video_views"
-            ).split(",")
-            df = fb.query(
-                fields=[f.strip() for f in fields],
-                date_from=start.isoformat(),
-                date_to=end.isoformat(),
-                time_granularity="day"
-            )
-            findings = ai_key_findings(q_user, df, f"Supermetrics FB fields={','.join(fields)} {start}..{end}", n=6)
-            st.session_state.insights[idx]["findings"] = findings
-            st.session_state.insights[idx]["sql"] = "Supermetrics (FB)"
-
-        else:
-            st.session_state.insights[idx]["findings"] = [
-                {"title":"Fonte não suportada","text":"Selecione GSC, Instagram ou Facebook."}
-            ]
-            st.session_state.insights[idx]["sql"] = ""
+            end = date.today(); start = end - timedelta(days=30)
+            fields = os.getenv("FPI_FIELDS","date,page_id,post_id,post_reach").split(",")
+            df = fb.query(fields=fields, date_from=start.isoformat(), date_to=end.isoformat())
+            findings = ai_key_findings(q_user, df, "Supermetrics FB", n=6)
+            st.session_state.insights[idx].update({"findings": findings, "sql": "Supermetrics (FB)"})
 
     except Exception as e:
-        st.session_state.insights[idx]["findings"] = [{"title":"Erro ao consultar","text": str(e)}]
-        st.session_state.insights[idx]["sql"] = ""
+        st.session_state.insights[idx].update({"findings":[{"title":"Erro","text":str(e)}], "sql":""})
     finally:
         st.session_state.pending = None
         st.rerun()
 
-# --------- Render: Key Findings (mais recente) ---------
+# --------- Render ---------
 if st.session_state.insights:
     block = st.session_state.insights[0]
-    st.markdown('<div class="card kf-card">', unsafe_allow_html=True)
+    st.markdown('<div class="insights-card">', unsafe_allow_html=True)
     st.markdown('<div class="kf-title">Key Findings</div>', unsafe_allow_html=True)
-
     if block["findings"] is None:
         st.write("Gerando insights…")
     else:
         st.markdown('<ol class="kf-list">', unsafe_allow_html=True)
         for it in block["findings"]:
-            title = escape(str(it.get("title","Insight")))
-            text  = escape(str(it.get("text","")))
-
             st.markdown(
-                f'<li><span class="kf-item-title">{title}</span>'
-                f'<span class="kf-item-text">{text}</span></li>',
+                f'<li><span class="kf-item-title">{escape(it.get("title",""))}</span> '
+                f'<span class="kf-item-text">{escape(it.get("text",""))}</span></li>',
                 unsafe_allow_html=True
             )
         st.markdown('</ol>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-
-    # opcional: mostrar SQL usada
     with st.expander("SQL usada (debug)"):
         st.code(block.get("sql") or "", language="sql")
 else:
-    # estado vazio amigável
-    st.info("Use os quick prompts acima ou escreva sua pergunta e clique em **Send** para gerar os insights.")
+    st.info("Use os quick prompts acima ou escreva sua pergunta e clique em **Send**.")
