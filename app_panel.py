@@ -136,6 +136,24 @@ button[data-testid="baseButton-primary"] {
     box-shadow: none !important;
 }
 
+/* Corrige textarea do Streamlit */
+div[data-testid="stTextArea"] textarea,
+div[data-testid="stTextInput-RootElement"] textarea {
+    background-color: #ffffff !important;  /* fundo branco */
+    color: #111111 !important;             /* texto preto */
+    border: 1px solid #d1d5db !important;  /* borda cinza clara */
+    border-radius: 6px !important;
+    padding: 8px !important;
+    font-size: 14px !important;
+}
+
+/* Placeholder em cinza */
+div[data-testid="stTextArea"] textarea::placeholder,
+div[data-testid="stTextInput-RootElement"] textarea::placeholder {
+    color: #6b7280 !important;  /* cinza médio */
+}
+
+
 /* Hover dos botões */
 button[data-testid="baseButton-secondary"]:hover,
 button[data-testid="baseButton-primary"]:hover {
