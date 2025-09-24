@@ -27,13 +27,13 @@ except Exception:
 st.set_page_config(page_title="AI Insights Panel", layout="wide")
 
 # --------- ENV VARS ---------
-BQ_TABLE     = os.getenv("BQ_TABLE", "").strip()         # ex: project.dataset.table
+BQ_TABLE     = os.getenv("BQ_TABLE", "").strip()
 SA_JSON      = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 OPENAI_KEY   = os.getenv("OPENAI_API", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
 
 if not BQ_TABLE:  st.error("Defina BQ_TABLE (ex.: projeto.dataset.tabela).")
-if not SA_JSON:   st.error("Defina GOOGLE_APPLICATION_CREDENTIALS_JSON (conteúdo do JSON da Service Account).")
+if not SA_JSON:   st.error("Defina GOOGLE_APPLICATION_CREDENTIALS_JSON.")
 if not OPENAI_KEY: st.warning("Defina OPENAI_API para habilitar a IA.")
 
 # --------- Credencial GCP ---------
@@ -62,7 +62,7 @@ if OPENAI_KEY:
     http_client = httpx.Client(timeout=60.0, follow_redirects=True, trust_env=False)
     client = OpenAI(api_key=OPENAI_KEY, http_client=http_client)
 
-# --------- STYLE FIXO (tema claro + classes próprias) ---------
+# --------- STYLE (normalizado p/ caixas do Looker Studio) ---------
 st.markdown("""
 <style>
 body, .stApp {
@@ -71,13 +71,14 @@ body, .stApp {
     font-family: "Segoe UI", Arial, sans-serif;
 }
 
-/* Painel principal */
-.side-panel {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+/* Caixa padrão */
+.box {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    color: #111111 !important;
 }
 
 /* Divisor */
@@ -91,51 +92,47 @@ body, .stApp {
 .chip-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
 }
-.chip-btn {
-    background: #f8fafc !important;
-    color: #111827 !important;
-    border: 1px solid #e5e7eb !important;
-    border-radius: 8px;
+.chip-btn button {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px;
     padding: 6px 10px;
-    text-align: center;
-    cursor: pointer;
 }
-.chip-btn:hover {
-    background: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
+.chip-btn button:hover {
+    background: #f9fafb !important;
+    border-color: #9ca3af !important;
 }
 
 /* Botões principais */
 .btn-primary button {
     background: #2563eb !important;
     color: #fff !important;
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 8px 12px;
     border: none;
 }
-.btn-primary button:hover {
-    background: #1e40af !important;
-}
+.btn-primary button:hover { background: #1e40af !important; }
+
 .btn-secondary button {
-    background: #f3f4f6 !important;
-    color: #111 !important;
-    border-radius: 8px;
+    background: #ffffff !important;
+    color: #111111 !important;
+    border-radius: 6px;
     border: 1px solid #d1d5db;
     padding: 8px 12px;
 }
-.btn-secondary button:hover {
-    background: #e5e7eb !important;
-}
+.btn-secondary button:hover { background: #f9fafb !important; }
 
-/* Caixa de insights */
+/* Insights */
 .insights-card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 20px;
-    margin-top: 20px;
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+    color: #111111 !important;
 }
 .kf-title {
     font-weight: 700;
@@ -149,21 +146,16 @@ body, .stApp {
 .kf-list li {
     counter-increment: item;
     margin: 0.5rem 0;
+    color: #111111 !important;
 }
 .kf-list li::before {
     content: counter(item) ".";
     font-weight: 700;
     margin-right: 6px;
-    color: #111827;
+    color: #111111 !important;
 }
-.kf-item-title {
-    font-weight: 600;
-    margin-right: 4px;
-}
-.kf-item-text {
-    display: inline;
-    color: #333;
-}
+.kf-item-title { font-weight: 600; }
+.kf-item-text { color: #111111 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -193,14 +185,8 @@ def ensure_limit(sql: str, default_limit:int=1000) -> str:
 def build_sql_with_ai(question: str, table_fqn: str, columns: list) -> str:
     if not client: return ""
     cols_txt = "\n".join([f"- {c} ({t})" for c, t in columns])
-    system = (
-        "Você é um gerador de SQL para BigQuery. "
-        "Responda SOMENTE com a consulta SQL."
-    )
-    user = (
-        f"Tabela alvo: `{table_fqn}`.\nColunas disponíveis:\n{cols_txt}\n\n"
-        f"Pergunta do usuário:\n{question}\n"
-    )
+    system = "Você é um gerador de SQL para BigQuery. Responda SOMENTE com a consulta SQL."
+    user = f"Tabela: `{table_fqn}`.\nColunas:\n{cols_txt}\n\nPergunta:\n{question}\n"
     resp = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[{"role":"system","content":system},{"role":"user","content":user}],
@@ -212,15 +198,8 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n:int=5):
     if not client: return [{"title":"Configuração necessária","text":"Defina OPENAI_API."}]
     if df.empty:   return [{"title":"Sem dados","text":"Não há linhas para o recorte solicitado."}]
     preview = df.head(40).to_csv(index=False)
-    system = (
-        "Você é um analista de Marketing/SEO. Gere insights curtos e acionáveis "
-        "com base nos dados fornecidos. Responda em JSON válido."
-    )
-    user = (
-        f"Gere até {n} findings. Estrutura:\n"
-        f'{{"findings":[{{"title":"...", "text":"..."}}]}}\n\n'
-        f"Pergunta:\n{question}\n\nSQL:\n{sql_used}\n\nPrévia:\n{preview}"
-    )
+    system = "Você é um analista de Marketing/SEO. Gere insights curtos em JSON válido."
+    user = f"Gere até {n} findings. Pergunta:\n{question}\nSQL:\n{sql_used}\nPrévia:\n{preview}"
     resp = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[{"role":"system","content":system},{"role":"user","content":user}],
@@ -229,21 +208,18 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n:int=5):
     )
     try:
         data = json.loads(resp.choices[0].message.content or "{}")
-        findings = data.get("findings", [])
-        return [{"title": it.get("title","Insight"), "text": it.get("text","")} for it in findings[:n]]
+        return [{"title": it.get("title","Insight"), "text": it.get("text","")} for it in data.get("findings", [])[:n]]
     except Exception:
         return [{"title":"Resumo", "text": resp.choices[0].message.content.strip()}]
 
 # --------- STATE ---------
-if "insights" not in st.session_state:
-    st.session_state.insights = []
-if "pending" not in st.session_state:
-    st.session_state.pending = None
+if "insights" not in st.session_state: st.session_state.insights = []
+if "pending" not in st.session_state: st.session_state.pending = None
 
 # --------- UI ---------
 st.markdown("### Generative Insights")
 with st.container():
-    st.markdown('<div class="side-panel">', unsafe_allow_html=True)
+    st.markdown('<div class="box">', unsafe_allow_html=True)
 
     source = st.selectbox(
         "Data source",
@@ -255,14 +231,12 @@ with st.container():
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
     st.caption("Quick prompts")
-    st.markdown('<div class="chip-group">', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1: chip1 = st.button("Key findings for this period", key="chip1")
     with col2: chip2 = st.button("Compare with last month", key="chip2")
     col3, col4 = st.columns(2)
     with col3: chip3 = st.button("Top queries & pages", key="chip3")
     with col4: chip4 = st.button("Any anomalies to highlight?", key="chip4")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
     st.caption("Type your question")
