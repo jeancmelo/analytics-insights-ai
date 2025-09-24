@@ -125,6 +125,26 @@ body, .stApp {
 }
 .btn-secondary button:hover { background: #f9fafb !important; }
 
+/* Corrige todos os botões (Send, Clear, Quick Prompts) */
+button[data-testid="baseButton-secondary"],
+button[data-testid="baseButton-primary"] {
+    background-color: #ffffff !important;   /* fundo branco */
+    color: #111111 !important;              /* texto preto */
+    border: 1px solid #d1d5db !important;   /* borda cinza */
+    border-radius: 6px !important;
+    padding: 6px 12px !important;
+    box-shadow: none !important;
+}
+
+/* Hover dos botões */
+button[data-testid="baseButton-secondary"]:hover,
+button[data-testid="baseButton-primary"]:hover {
+    background-color: #f9fafb !important;   /* cinza bem claro */
+    border-color: #9ca3af !important;
+    color: #111111 !important;
+}
+
+
 /* Insights */
 .insights-card {
     background: #ffffff !important;
