@@ -108,6 +108,13 @@ li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; padding: 0px 0px
 /* divisória */
 .divider{{ height:1px; background:#e5e7eb; margin:.6rem 0; }}
 
+/* Background COlor White */
+
+.st-emotion-cache-13k62yr{
+    background: rgb(255 255 255) !important;
+}
+
+
 </style>
 """, unsafe_allow_html=True)
 
