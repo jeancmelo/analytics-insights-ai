@@ -112,8 +112,15 @@ li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; padding: 0px 0px
 
 .st-emotion-cache-13k62yr{
     background: rgb(255 255 255) !important;
+    color: rgba(0, 0, 0, .87) !important;
 }
-
+.st-emotion-cache-15hul6a{
+    background-color: #fff !important;
+    border: 1px solid #5f636826 !important;
+}
+.st-bw{
+    background-color: #fff !important;
+}
 
 </style>
 """, unsafe_allow_html=True)
