@@ -32,6 +32,7 @@ SA_JSON      = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 OPENAI_KEY   = os.getenv("OPENAI_API", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
 
+# --------- ALERTAS ---------
 if not BQ_TABLE:  st.error("Defina BQ_TABLE (ex.: projeto.dataset.tabela).")
 if not SA_JSON:   st.error("Defina GOOGLE_APPLICATION_CREDENTIALS_JSON.")
 if not OPENAI_KEY: st.warning("Defina OPENAI_API para habilitar a IA.")
@@ -62,23 +63,36 @@ if OPENAI_KEY:
     http_client = httpx.Client(timeout=60.0, follow_redirects=True, trust_env=False)
     client = OpenAI(api_key=OPENAI_KEY, http_client=http_client)
 
-# --------- STYLE (normalizado p/ caixas do Looker Studio) ---------
+# --------- STYLE (minimalista + LookerStudio-like) ---------
 st.markdown("""
 <style>
 body, .stApp {
     background: #ffffff !important;
     color: #111111 !important;
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: "Source Sans Pro", "Segoe UI", Arial, sans-serif;
+}
+
+/* Container principal */
+.block-container {
+    padding: 2rem 2rem 4rem !important;
 }
 
 /* Caixa padrão */
-.box {
+.card {
     background: #ffffff !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
     color: #111111 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* Títulos */
+h3, .section-title {
+    font-weight: 600;
+    color: #111111;
+    margin-bottom: 1rem;
 }
 
 /* Divisor */
@@ -88,93 +102,58 @@ body, .stApp {
     margin: 1rem 0;
 }
 
-/* Botões rápidos (chips) */
-.chip-group {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-.chip-btn button {
-    background: #ffffff !important;
+/* Select */
+div[data-testid="stSelectbox"] > div {
+    background-color: #ffffff !important;
     color: #111111 !important;
     border: 1px solid #d1d5db !important;
-    border-radius: 6px;
-    padding: 6px 10px;
-}
-.chip-btn button:hover {
-    background: #f9fafb !important;
-    border-color: #9ca3af !important;
+    border-radius: 6px !important;
+    padding: 4px !important;
 }
 
-/* Botões principais */
-.btn-primary button {
-    background: #2563eb !important;
-    color: #fff !important;
-    border-radius: 6px;
-    padding: 8px 12px;
-    border: none;
-}
-.btn-primary button:hover { background: #1e40af !important; }
-
-.btn-secondary button {
-    background: #ffffff !important;
+/* Textarea */
+div[data-testid="stTextArea"] textarea {
+    background-color: #ffffff !important;
     color: #111111 !important;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    padding: 8px 12px;
-}
-.btn-secondary button:hover { background: #f9fafb !important; }
-
-/* Corrige todos os botões (Send, Clear, Quick Prompts) */
-button[data-testid="baseButton-secondary"],
-button[data-testid="baseButton-primary"] {
-    background-color: #ffffff !important;   /* fundo branco */
-    color: #111111 !important;              /* texto preto */
-    border: 1px solid #d1d5db !important;   /* borda cinza */
+    border: 1px solid #d1d5db !important;
     border-radius: 6px !important;
-    padding: 6px 12px !important;
-    box-shadow: none !important;
-}
-
-/* Corrige textarea do Streamlit */
-div[data-testid="stTextArea"] textarea,
-div[data-testid="stTextInput-RootElement"] textarea {
-    background-color: #ffffff !important;  /* fundo branco */
-    color: #111111 !important;             /* texto preto */
-    border: 1px solid #d1d5db !important;  /* borda cinza clara */
-    border-radius: 6px !important;
-    padding: 8px !important;
+    padding: 10px !important;
     font-size: 14px !important;
 }
-
-/* Placeholder em cinza */
-div[data-testid="stTextArea"] textarea::placeholder,
-div[data-testid="stTextInput-RootElement"] textarea::placeholder {
-    color: #6b7280 !important;  /* cinza médio */
+div[data-testid="stTextArea"] textarea::placeholder {
+    color: #6b7280 !important;
 }
 
-
-/* Hover dos botões */
+/* Botões */
+button[data-testid="baseButton-secondary"],
+button[data-testid="baseButton-primary"] {
+    background-color: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    padding: 6px 14px !important;
+    font-size: 14px !important;
+    box-shadow: none !important;
+}
 button[data-testid="baseButton-secondary"]:hover,
 button[data-testid="baseButton-primary"]:hover {
-    background-color: #f9fafb !important;   /* cinza bem claro */
+    background-color: #f9fafb !important;
     border-color: #9ca3af !important;
-    color: #111111 !important;
 }
-
 
 /* Insights */
 .insights-card {
     background: #ffffff !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 8px;
-    padding: 16px;
-    margin-top: 16px;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
     color: #111111 !important;
 }
 .kf-title {
-    font-weight: 700;
-    margin-bottom: 10px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 16px;
 }
 .kf-list {
     counter-reset: item;
@@ -188,7 +167,7 @@ button[data-testid="baseButton-primary"]:hover {
 }
 .kf-list li::before {
     content: counter(item) ".";
-    font-weight: 700;
+    font-weight: 600;
     margin-right: 6px;
     color: #111111 !important;
 }
@@ -220,6 +199,7 @@ def ensure_limit(sql: str, default_limit:int=1000) -> str:
     return sql if re.search(r"\blimit\b\s+\d+\s*$", sql, re.I) else f"{sql}\nLIMIT {default_limit}"
 
 # --------- AI SQL + Findings ---------
+from openai import OpenAI
 def build_sql_with_ai(question: str, table_fqn: str, columns: list) -> str:
     if not client: return ""
     cols_txt = "\n".join([f"- {c} ({t})" for c, t in columns])
@@ -255,41 +235,35 @@ if "insights" not in st.session_state: st.session_state.insights = []
 if "pending" not in st.session_state: st.session_state.pending = None
 
 # --------- UI ---------
+st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown("### Generative Insights")
-with st.container():
-    st.markdown('<div class="box">', unsafe_allow_html=True)
 
-    source = st.selectbox(
-        "Data source",
-        ["Google Search Console (BigQuery)",
-         "Instagram Insights (Supermetrics)",
-         "Facebook Page Insights (Supermetrics)"],
-        index=0
-    )
+source = st.selectbox(
+    "Data source",
+    ["Google Search Console (BigQuery)",
+     "Instagram Insights (Supermetrics)",
+     "Facebook Page Insights (Supermetrics)"],
+    index=0
+)
 
-    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-    st.caption("Quick prompts")
-    col1, col2 = st.columns(2)
-    with col1: chip1 = st.button("Key findings for this period", key="chip1")
-    with col2: chip2 = st.button("Compare with last month", key="chip2")
-    col3, col4 = st.columns(2)
-    with col3: chip3 = st.button("Top queries & pages", key="chip3")
-    with col4: chip4 = st.button("Any anomalies to highlight?", key="chip4")
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+st.caption("Quick prompts")
+col1, col2 = st.columns(2)
+with col1: chip1 = st.button("Key findings for this period", key="chip1")
+with col2: chip2 = st.button("Compare with last month", key="chip2")
+col3, col4 = st.columns(2)
+with col3: chip3 = st.button("Top queries & pages", key="chip3")
+with col4: chip4 = st.button("Any anomalies to highlight?", key="chip4")
 
-    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-    st.caption("Type your question")
-    q = st.text_area(" ", key="ask", height=90,
-                     placeholder="e.g., Give me 5 actionable insights for this dataset.")
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+st.caption("Type your question")
+q = st.text_area(" ", key="ask", height=90,
+                 placeholder="e.g., Give me 5 actionable insights for this dataset.")
 
-    st.markdown('<div class="btn-primary">', unsafe_allow_html=True)
-    send = st.button("Send", use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+send = st.button("Send")
+clear = st.button("Clear insights")
 
-    st.markdown('<div class="btn-secondary">', unsafe_allow_html=True)
-    clear = st.button("Clear insights", use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 # --------- Lógica chips ---------
 if chip1: q, send = "Give me 5 key findings for the current period.", True
