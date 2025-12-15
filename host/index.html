@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Looker + AI Panel</title>
+  <title>Looker + AI Insights</title>
   <style>
     html, body { height:100%; margin:0; }
     #looker { width:100%; height:100%; border:0; }
@@ -15,70 +15,86 @@
       box-shadow:0 10px 30px rgba(0,0,0,.22);
       font-weight:600;
     }
-    #backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.38); display:none; }
-    #panelWrap{
+
+    #backdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.38);
+      display:none;
+    }
+
+    #panel{
       position:fixed; top:16px; right:16px; bottom:16px;
       width:min(480px, calc(100vw - 32px));
       background:#fff; border-radius:16px;
       box-shadow:0 20px 60px rgba(0,0,0,.28);
       overflow:hidden; display:none;
     }
+
     #panelHeader{
-      height:52px; display:flex; align-items:center; justify-content:space-between;
-      padding:0 12px 0 14px; border-bottom:1px solid #e5e7eb;
-      background:#fff;
-      font-weight:700; color:#111827; font-size:14px;
+      height:52px; display:flex;
+      align-items:center; justify-content:space-between;
+      padding:0 14px; border-bottom:1px solid #e5e7eb;
+      font-weight:700;
     }
+
     #closeBtn{
-      width:34px; height:34px; border-radius:10px;
-      border:1px solid #e5e7eb; background:#fff; cursor:pointer;
-      font-size:16px;
+      border:1px solid #e5e7eb;
+      background:#fff; border-radius:10px;
+      width:32px; height:32px; cursor:pointer;
     }
-    #aiPanel{ width:100%; height:calc(100% - 52px); border:0; }
+
+    #aiPanel{
+      width:100%;
+      height:calc(100% - 52px);
+      border:0;
+    }
   </style>
 </head>
 <body>
-  <!-- Looker fullscreen -->
-  <iframe id="looker"
-    src="https://lookerstudio.google.com/embed/reporting/SEU_REPORT_ID/page/SEU_PAGE_ID"
+
+  <!-- Looker -->
+  <iframe
+    id="looker"
+    src="https://lookerstudio.google.com/embed/reporting/3620f792-fb50-4076-8830-85909800fc95/page/p_cdocqgusqd"
     allowfullscreen
-    referrerpolicy="no-referrer-when-downgrade"></iframe>
+  ></iframe>
 
   <!-- Button -->
   <button id="askBtn">Ask AI</button>
 
-  <!-- Modal -->
+  <!-- Overlay -->
   <div id="backdrop"></div>
-  <div id="panelWrap" role="dialog" aria-modal="true">
+
+  <div id="panel">
     <div id="panelHeader">
-      <div>AI Insights</div>
-      <button id="closeBtn" aria-label="Close">✕</button>
+      <span>AI Insights</span>
+      <button id="closeBtn">✕</button>
     </div>
-    <iframe id="aiPanel" src="about:blank"></iframe>
+    <iframe
+      id="aiPanel"
+      src="https://analytics-insights-ai-production.up.railway.app/"
+    ></iframe>
   </div>
 
   <script>
-    const AI_URL = "https://analytics-insights-ai-production.up.railway.app/";
-
-    const panelWrap = document.getElementById("panelWrap");
-    const aiPanel = document.getElementById("aiPanel");
+    const panel = document.getElementById("panel");
     const backdrop = document.getElementById("backdrop");
 
-    function openPanel(){
-      aiPanel.src = AI_URL;     // sem parâmetros
-      panelWrap.style.display = "block";
+    document.getElementById("askBtn").onclick = () => {
+      panel.style.display = "block";
       backdrop.style.display = "block";
-    }
-    function closePanel(){
-      panelWrap.style.display = "none";
-      backdrop.style.display = "none";
-      aiPanel.src = "about:blank";
-    }
+    };
 
-    document.getElementById("askBtn").onclick = openPanel;
-    document.getElementById("closeBtn").onclick = closePanel;
-    backdrop.onclick = closePanel;
-    window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closePanel(); });
+    document.getElementById("closeBtn").onclick = () => {
+      panel.style.display = "none";
+      backdrop.style.display = "none";
+    };
+
+    backdrop.onclick = () => {
+      panel.style.display = "none";
+      backdrop.style.display = "none";
+    };
   </script>
+
 </body>
 </html>
