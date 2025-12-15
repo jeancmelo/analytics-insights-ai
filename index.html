@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Looker + AI Insights</title>
+  <style>
+    html, body { height:100%; margin:0; }
+    #looker { width:100%; height:100%; border:0; }
+
+    #askBtn{
+      position:fixed; right:18px; bottom:18px;
+      padding:12px 14px; border-radius:999px; border:0;
+      cursor:pointer; background:#fff; color:#111827;
+      box-shadow:0 10px 30px rgba(0,0,0,.22);
+      font-weight:600;
+    }
+
+    #backdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.38);
+      display:none;
+    }
+
+    #panel{
+      position:fixed; top:16px; right:16px; bottom:16px;
+      width:min(480px, calc(100vw - 32px));
+      background:#fff; border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,.28);
+      overflow:hidden; display:none;
+    }
+
+    #panelHeader{
+      height:52px; display:flex;
+      align-items:center; justify-content:space-between;
+      padding:0 14px; border-bottom:1px solid #e5e7eb;
+      font-weight:700;
+    }
+
+    #closeBtn{
+      border:1px solid #e5e7eb;
+      background:#fff; border-radius:10px;
+      width:32px; height:32px; cursor:pointer;
+    }
+
+    #aiPanel{
+      width:100%;
+      height:calc(100% - 52px);
+      border:0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Looker -->
+  <iframe
+    id="looker"
+    src="https://lookerstudio.google.com/embed/reporting/3620f792-fb50-4076-8830-85909800fc95/page/p_cdocqgusqd"
+    allowfullscreen
+  ></iframe>
+
+  <!-- Button -->
+  <button id="askBtn">Ask AI</button>
+
+  <!-- Overlay -->
+  <div id="backdrop"></div>
+
+  <div id="panel">
+    <div id="panelHeader">
+      <span>AI Insights</span>
+      <button id="closeBtn">✕</button>
+    </div>
+    <iframe
+      id="aiPanel"
+      src="https://analytics-insights-ai-production.up.railway.app/"
+    ></iframe>
+  </div>
+
+  <script>
+    const panel = document.getElementById("panel");
+    const backdrop = document.getElementById("backdrop");
+
+    document.getElementById("askBtn").onclick = () => {
+      panel.style.display = "block";
+      backdrop.style.display = "block";
+    };
+
+    document.getElementById("closeBtn").onclick = () => {
+      panel.style.display = "none";
+      backdrop.style.display = "none";
+    };
+
+    backdrop.onclick = () => {
+      panel.style.display = "none";
+      backdrop.style.display = "none";
+    };
+  </script>
+
+</body>
+</html>
