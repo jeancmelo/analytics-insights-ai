@@ -27,13 +27,11 @@ except Exception:
 st.set_page_config(page_title="AI Insights Panel", layout="wide")
 
 # ---------------- ENV VARS ----------------
-# (mantém compatibilidade com o teu deploy atual)
 BQ_TABLE = os.getenv("BQ_TABLE", "").strip()  # fallback (uma única tabela)
 
-# Views recomendadas (Rubis Gas) — podes sobrescrever por ENV no Railway
 DEFAULT_FACT_GA4 = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ga4_page_day"
 DEFAULT_FACT_GSC = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_gsc_page_day"
-DEFAULT_AI_READY = "wyp-analytics.wyp_gold_client_rubis_gas.vw_ai_page_performance_day"
+DEFAULT_AI_READY  = "wyp-analytics.wyp_gold_client_rubis_gas.vw_ai_page_performance_day"
 
 BQ_VIEW_FACT_GA4 = os.getenv("BQ_VIEW_FACT_GA4", DEFAULT_FACT_GA4).strip()
 BQ_VIEW_FACT_GSC = os.getenv("BQ_VIEW_FACT_GSC", DEFAULT_FACT_GSC).strip()
@@ -42,6 +40,13 @@ BQ_VIEW_AI_READY = os.getenv("BQ_VIEW_AI_READY", DEFAULT_AI_READY).strip()
 SA_JSON = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 OPENAI_KEY = os.getenv("OPENAI_API", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+
+# Logo (black SVG) provided by you
+WYP_LOGO_URL = "https://wyperformance.com/wp-content/themes/wyp/dist/img/logo-wyperformance-black.svg"
+
+# Subtle brand accents (keep professional)
+BRAND_ACCENT = "#F15A24"   # warm orange (use sparingly)
+BRAND_ACCENT_2 = "#E11D48" # optional red accent (super subtle if used)
 
 if not SA_JSON:
     st.error("Defina GOOGLE_APPLICATION_CREDENTIALS_JSON (conteúdo do JSON da Service Account).")
@@ -81,44 +86,172 @@ if OPENAI_KEY:
 
 # ---------------- STYLE ----------------
 st.markdown(
-    """
+    f"""
 <style>
-/* (1) QUICK PROMPTS: botões claros, como o textarea */
-[data-testid="stAppViewContainer"] .chips .stButton > button {
-  background: #f8fafc !important;
-  background-color: #f8fafc !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: none !important;
-}
-[data-testid="stAppViewContainer"] .chips .stButton > button:hover {
-  background: #f1f5f9 !important;
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-}
-.chips .stButton > button p,
-.chips .stButton > button span { color:#111827 !important; }
+/* Layout base (painel limpo, SaaS) */
+[data-testid="stAppViewContainer"] {{
+  background: #0B0F14;
+}}
+.block-container {{
+  padding: 20px 18px 130px !important; /* espaço para o composer */
+  max-width: 520px !important;         /* mantém o painel “premium” */
+}}
+/* Remove gaps agressivos */
+[class^="st-emotion-cache-"] {{ gap: 0 !important; row-gap: 10px !important; }}
 
-/* (2) Labels */
-[data-testid="stCaption"] { color:#374151 !important; }
+/* Header custom */
+.ai-header {{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 14px 14px 12px;
+  background: linear-gradient(180deg, rgba(11,15,20,0.98) 0%, rgba(11,15,20,0.90) 60%, rgba(11,15,20,0.0) 100%);
+  backdrop-filter: blur(8px);
+}}
+.ai-topbar {{
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}}
+.ai-title {{
+  font-size: 13px;
+  color: rgba(255,255,255,0.72);
+  letter-spacing: 0.2px;
+}}
+.logo-pill {{
+  justify-self: center;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}}
+.logo-pill img {{
+  height: 18px;
+  display:block;
+}}
+.close-hint {{
+  justify-self: end;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+}}
+.accent-line {{
+  height: 2px;
+  background: linear-gradient(90deg, {BRAND_ACCENT} 0%, rgba(241,90,36,0.05) 70%, rgba(241,90,36,0.0) 100%);
+  border-radius: 999px;
+  margin-top: 10px;
+}}
 
-/* (3) Espaçamento */
-.btn-row { display:grid !important; grid-template-columns: 1fr !important; gap:8px !important; }
-.btn-row .stButton { margin:0 !important; }
+/* Card base */
+.card {{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 14px 14px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+}}
+.card h3 {{
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: rgba(255,255,255,0.9);
+  font-weight: 700;
+}}
+.muted {{
+  color: rgba(255,255,255,0.65);
+  font-size: 12.5px;
+  line-height: 1.35;
+}}
 
-[class^="st-emotion-cache-"] { gap: 0 !important; row-gap: 5px !important; }
-li[class^="st-emotion-cache-"],
-li[class*=" st-emotion-cache-"] { margin-bottom: 6% !important; padding: 0px 0px 0px 0.6em !important; }
+/* Datasource row */
+.ds-row {{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}}
+.ds-badge {{
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  border: 1px solid rgba(255,255,255,0.10);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}}
 
-.block-container  {padding: 3rem 1rem 10rem  !important;}
-.kf-list { counter-reset:item; list-style:none; padding-left:0; margin:0; }
-.kf-list li { counter-increment:item; margin:.55rem 0; }
-.kf-list li::before { content: counter(item) "."; font-weight:700; margin-right:.35rem; color:#111827; }
-.kf-item-title { font-weight:700; }
-.kf-item-text { display:block; margin-top:.15rem; }
-.kf-title { font-weight:700; margin-bottom: 5%;}
+/* Chat bubbles (Streamlit chat_message uses internal styles; we enhance cards inside assistant) */
+.finding-card {{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin: 10px 0;
+}}
+.finding-title {{
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  font-size: 12.8px;
+  margin-bottom: 4px;
+}}
+.finding-text {{
+  color: rgba(255,255,255,0.70);
+  font-size: 12.6px;
+  line-height: 1.35;
+}}
 
-.divider{ height:1px; background:#e5e7eb; margin:.6rem 0; }
+/* Composer fixo (input) */
+.composer {{
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  width: 480px;
+  max-width: calc(100vw - 36px);
+  z-index: 60;
+}}
+.composer-inner {{
+  background: rgba(11,15,20,0.92);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 18px;
+  padding: 10px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+}}
+/* Buttons subtle */
+.stButton > button {{
+  border-radius: 12px !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.92) !important;
+}}
+.stButton > button:hover {{
+  border-color: rgba(255,255,255,0.18) !important;
+  background: rgba(255,255,255,0.07) !important;
+}}
+/* Primary send */
+.send-btn .stButton > button {{
+  background: {BRAND_ACCENT}15 !important;
+  border-color: {BRAND_ACCENT}55 !important;
+}}
+.send-btn .stButton > button:hover {{
+  background: {BRAND_ACCENT}22 !important;
+  border-color: {BRAND_ACCENT}77 !important;
+}}
+
+/* Make selectbox blend */
+[data-testid="stSelectbox"] > div {{
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 14px !important;
+}}
+label, .stCaption {{
+  color: rgba(255,255,255,0.65) !important;
+}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -136,7 +269,6 @@ def sanitize_sql(text: str) -> str:
         t = t[m.start() :]
     return t.strip().rstrip(";")
 
-
 def sql_is_safe(sql: str, allowed_table_fqn: str) -> bool:
     s = sql.strip().lower()
     if not re.match(r"^\s*select\b", s):
@@ -149,13 +281,10 @@ def sql_is_safe(sql: str, allowed_table_fqn: str) -> bool:
     s_clean = re.sub(r"[`\s]", "", s)
     return target_clean in s_clean
 
-
 def ensure_limit(sql: str, default_limit: int = 1000) -> str:
     return sql if re.search(r"\blimit\b\s+\d+\s*$", sql, re.I) else f"{sql}\nLIMIT {default_limit}"
 
-
 def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: str) -> str:
-    """Gera SQL (apenas SELECT) para uma tabela/VIEW específica."""
     if not client:
         return ""
 
@@ -167,7 +296,6 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: 
         "Use exclusivamente a tabela e colunas fornecidas; não use outras tabelas, nem DDL/DML."
     )
 
-    # Regras por camada (FACT vs AI-READY)
     if table_kind == "AI_READY":
         rules = (
             "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
@@ -182,7 +310,7 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: 
             "- Métricas: clicks=SUM(gsc_clicks), impressions=SUM(gsc_impressions), ctr=SAFE_DIVIDE(SUM(gsc_clicks), SUM(gsc_impressions)), avg_position=AVG(gsc_avg_position).\n"
             "- Para rankings, ordene por impressions ou clicks e limite resultados longos.\n"
         )
-    else:  # FACT_GA4
+    else:
         rules = (
             "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
             "- Métricas: pageviews=SUM(ga_pageviews), sessions=SUM(ga_sessions).\n"
@@ -204,9 +332,7 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: 
     )
     return sanitize_sql(resp.choices[0].message.content.strip())
 
-
-def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 5):
-    """Pede findings em JSON: {"findings":[{"title":...,"text":...}]}"""
+def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 6):
     if not client:
         return [{"title": "Configuração necessária", "text": "Defina OPENAI_API."}]
     if df.empty:
@@ -219,7 +345,6 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 5):
         "com base nos dados fornecidos. Responda em JSON válido com a chave 'findings'. "
         "Não descreva SQL, não invente números; use apenas o que vier nos dados."
     )
-
     user = (
         f"Gere até {n} findings (curtos). Estrutura:\n"
         f'{{"findings":[{{"title":"...", "text":"..."}}]}}\n\n'
@@ -241,123 +366,195 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 5):
         out = []
         for it in findings[:n]:
             title = str(it.get("title", "Insight")).strip()[:120]
-            text = str(it.get("text", "")).strip()
+            text  = str(it.get("text", "")).strip()
             if text:
                 out.append({"title": title or "Insight", "text": text})
         return out or [{"title": "Sem insights", "text": "Os dados retornados são muito curtos para gerar achados úteis."}]
     except Exception:
         return [{"title": "Resumo", "text": resp.choices[0].message.content.strip()}]
 
-
-# ---------------- STATE ----------------
-if "insights" not in st.session_state:
-    st.session_state.insights = []  # {q, findings, ts, sql}
-if "pending" not in st.session_state:
-    st.session_state.pending = None
-
-# ---------------- UI ----------------
-st.markdown("### Generative Insights")
-with st.container():
-    st.markdown('<div class="panel-card">', unsafe_allow_html=True)
-
-    source = st.selectbox(
-        "Data source",
-        [
-            "Rubis Gas – AI Ready (GA4 + GSC)",
-            "Rubis Gas – FACT (GSC por URL/dia)",
-            "Rubis Gas – FACT (GA4 por URL/dia)",
-            "Instagram Insights (Supermetrics)",
-            "Facebook Page Insights (Supermetrics)",
-        ],
-        index=0,
-    )
-
-    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-    # Quick prompts (chips)
-    st.caption("Quick prompts")
-    c1, c2 = st.columns(2)
-    with c1:
-        chip1 = st.button("Key findings for this period", key="chip1")
-    with c2:
-        chip2 = st.button("Compare with last month", key="chip2")
-
-    c3, c4 = st.columns(2)
-    with c3:
-        chip3 = st.button("Top pages (and drivers)", key="chip3")
-    with c4:
-        chip4 = st.button("Any anomalies to highlight?", key="chip4")
-
-    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-    # Pergunta + botões
-    st.caption("Type your question")
-    col_input, col_btns = st.columns([0.7, 0.3])
-
-    with col_input:
-        st.markdown('<div class="textarea">', unsafe_allow_html=True)
-        q = st.text_area(
-            label=" ",
-            label_visibility="collapsed",
-            key="ask",
-            height=90,
-            placeholder="e.g., Give me 5 actionable insights for this dataset and the selected period.",
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col_btns:
-        st.markdown('<div class="btn-primary">', unsafe_allow_html=True)
-        send = st.button("Send", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown('<div class="btn-secondary">', unsafe_allow_html=True)
-        clear = st.button("Clear insights", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# Chips preenchem e enviam
-if chip1:
-    q, send = "Give me 5 key findings for the current period.", True
-if chip2:
-    q, send = "Summarize performance vs last month in up to 5 findings.", True
-if chip3:
-    q, send = "Show the top pages and explain what is driving their performance.", True
-if chip4:
-    q, send = "Detect anomalies or significant day-to-day changes worth attention.", True
-
-# Limpar
-if clear:
-    st.session_state.insights = []
-    st.session_state.pending = None
-    st.rerun()
-
-# Enfileira
-if send and q and q.strip():
-    st.session_state.insights.insert(0, {"q": q.strip(), "findings": None, "ts": time.time(), "sql": None})
-    st.session_state.pending = 0
-    st.rerun()
-
-
 def _active_bq_table_and_kind(selected_source: str):
-    """Define qual VIEW usar e qual conjunto de regras aplicar."""
     if selected_source.startswith("Rubis Gas – AI Ready"):
         return BQ_VIEW_AI_READY, "AI_READY"
     if selected_source.startswith("Rubis Gas – FACT (GSC"):
         return BQ_VIEW_FACT_GSC, "FACT_GSC"
     if selected_source.startswith("Rubis Gas – FACT (GA4"):
         return BQ_VIEW_FACT_GA4, "FACT_GA4"
-    # fallback (compatibilidade)
     if BQ_TABLE:
         return BQ_TABLE, "AI_READY"
     return "", "AI_READY"
 
+# ---------------- STATE ----------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []  # {role: "user"/"assistant", type: "...", ...}
+if "active_source" not in st.session_state:
+    st.session_state.active_source = None
+if "summary_cached" not in st.session_state:
+    st.session_state.summary_cached = {}  # source -> summary_msg
+if "pending_job" not in st.session_state:
+    st.session_state.pending_job = None  # dict
 
-# Processa UMA pendência
-if st.session_state.pending is not None:
-    idx = st.session_state.pending
+# ---------------- HEADER ----------------
+st.markdown(
+    f"""
+<div class="ai-header">
+  <div class="ai-topbar">
+    <div class="ai-title">AI Insights</div>
+    <div class="logo-pill">
+      <img src="{WYP_LOGO_URL}" alt="Wyperformance" />
+    </div>
+    <div class="close-hint">close (X)</div>
+  </div>
+  <div class="accent-line"></div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+# ---------------- DATASOURCE SELECT ----------------
+source = st.selectbox(
+    "Data source",
+    [
+        "Rubis Gas – AI Ready (GA4 + GSC + Screaming Frog)",
+        "Rubis Gas – FACT (GSC por URL/dia)",
+        "Rubis Gas – FACT (GA4 por URL/dia)",
+        "Instagram Insights (Supermetrics)",
+        "Facebook Page Insights (Supermetrics)",
+    ],
+    index=0,
+)
+
+st.markdown(
+    f"""
+<div class="ds-row">
+  <div class="ds-badge">Using: {escape(source)}</div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+def _push_assistant_summary_for_source(selected_source: str):
+    """
+    Cria um resumo curto (geral do site) e adiciona como 1ª mensagem do assistant.
+    - Para Rubis: usa uma pergunta padrão que teu pipeline já suporta.
+    - Para IG/FB: também funciona, mas fica mais “geral”.
+    """
+    if selected_source in st.session_state.summary_cached:
+        # já temos summary para esta fonte: mostra no topo do chat se ainda não existe na timeline
+        return
+
+    if selected_source.startswith("Rubis Gas"):
+        q = (
+            "Give me a short overall site summary for this period in 3-5 bullets. "
+            "Focus on the most important issues/opportunities (technical SEO, indexing, CTR, performance)."
+        )
+    else:
+        q = (
+            "Give me a short overall performance summary for this period in 3-5 bullets. "
+            "Focus on what changed and what to do next."
+        )
+
+    # agenda um job de background (mesmo flow que tu já tens)
+    st.session_state.pending_job = {
+        "kind": "summary",
+        "source": selected_source,
+        "question": q,
+    }
+
+def _enqueue_user_question(selected_source: str, question: str):
+    st.session_state.messages.append({"role": "user", "type": "text", "text": question.strip(), "ts": time.time()})
+    st.session_state.pending_job = {
+        "kind": "chat",
+        "source": selected_source,
+        "question": question.strip(),
+    }
+
+# Se trocou de fonte, reseta “pending” e injeta summary (uma vez por fonte)
+if st.session_state.active_source != source:
+    st.session_state.active_source = source
+    _push_assistant_summary_for_source(source)
+    st.rerun()
+
+# ---------------- RENDER CHAT (messages) ----------------
+for m in st.session_state.messages:
+    if m["role"] == "user":
+        with st.chat_message("user"):
+            st.markdown(escape(m.get("text", "")))
+    else:
+        with st.chat_message("assistant"):
+            if m.get("type") == "summary":
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.markdown("<h3>Overall summary</h3>", unsafe_allow_html=True)
+                bullets = m.get("bullets", [])
+                if bullets:
+                    for b in bullets[:6]:
+                        st.markdown(f"- {escape(b)}")
+                else:
+                    st.markdown(f'<div class="muted">{escape(m.get("text",""))}</div>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            elif m.get("type") == "findings":
+                # render insights como cards (conversa + visual premium)
+                intro = m.get("intro") or "Here are the key insights:"
+                st.markdown(f"<div class='muted'>{escape(intro)}</div>", unsafe_allow_html=True)
+
+                for it in m.get("findings", [])[:10]:
+                    title = escape(str(it.get("title", "Insight")))
+                    text  = escape(str(it.get("text", "")))
+                    st.markdown(
+                        f"""
+<div class="finding-card">
+  <div class="finding-title">{title}</div>
+  <div class="finding-text">{text}</div>
+</div>
+""",
+                        unsafe_allow_html=True,
+                    )
+
+                with st.expander("SQL used (debug)"):
+                    st.code(m.get("sql") or "", language="sql")
+            else:
+                st.markdown(escape(m.get("text", "")))
+
+# ---------------- COMPOSER (fixo) ----------------
+st.markdown('<div class="composer"><div class="composer-inner">', unsafe_allow_html=True)
+col_a, col_b, col_c = st.columns([0.76, 0.14, 0.10])
+
+with col_a:
+    user_q = st.text_area(
+        "Ask",
+        label_visibility="collapsed",
+        height=52,
+        placeholder="Ask about the report… e.g., What should I prioritize this month?",
+        key="composer_input",
+    )
+
+with col_b:
+    st.markdown('<div class="send-btn">', unsafe_allow_html=True)
+    send = st.button("Send", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with col_c:
+    clear = st.button("Clear", use_container_width=True)
+
+st.markdown("</div></div>", unsafe_allow_html=True)
+
+if clear:
+    st.session_state.messages = []
+    st.session_state.pending_job = None
+    st.rerun()
+
+if send and user_q and user_q.strip():
+    _enqueue_user_question(source, user_q.strip())
+    st.session_state["composer_input"] = ""
+    st.rerun()
+
+# ---------------- PROCESS PENDING JOB ----------------
+if st.session_state.pending_job is not None:
+    job = st.session_state.pending_job
     try:
-        q_user = st.session_state.insights[idx]["q"]
-        current_source = source
+        current_source = job["source"]
+        q_user = job["question"]
 
         # ---------------- BigQuery (Rubis Gas) ----------------
         if current_source.startswith("Rubis Gas"):
@@ -374,21 +571,17 @@ if st.session_state.pending is not None:
             except Forbidden as e:
                 raise RuntimeError(
                     "A Service Account não tem permissão para ler o schema da VIEW. "
-                    "Garanta no mínimo: bigquery.tables.get (e para rodar query: bigquery.jobs.create / bigquery.dataViewer). "
+                    "Garanta no mínimo: bigquery.tables.get e bigquery.jobs.create. "
                     f"Detalhe: {e}"
                 )
             except NotFound:
-                raise RuntimeError(
-                    "A VIEW não existe (ou está noutro dataset/projeto). "
-                    f"Confirme o nome: {active_table}"
-                )
+                raise RuntimeError(f"A VIEW não existe. Confirme o nome: {active_table}")
 
             sql = build_sql_with_ai(q_user, active_table, schema_cols, table_kind)
             if not sql or not sql_is_safe(sql, active_table):
-                st.session_state.insights[idx]["findings"] = [
-                    {"title": "Consulta inválida", "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."}
-                ]
-                st.session_state.insights[idx]["sql"] = sql or ""
+                findings = [{"title": "Consulta inválida", "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."}]
+                sql_used = sql or ""
+                df = pd.DataFrame()
             else:
                 sql = ensure_limit(sql)
                 try:
@@ -403,8 +596,7 @@ if st.session_state.pending is not None:
                     raise RuntimeError(f"SQL inválida gerada. Detalhe: {e}")
 
                 findings = ai_key_findings(q_user, df, sql, n=6)
-                st.session_state.insights[idx]["findings"] = findings
-                st.session_state.insights[idx]["sql"] = sql
+                sql_used = sql
 
         # ---------------- Instagram ----------------
         elif current_source.startswith("Instagram"):
@@ -417,7 +609,7 @@ if st.session_state.pending is not None:
             drt = (os.getenv("IGI_DATE_RANGE_TYPE") or "").strip() or None
             if drt:
                 df = ig.query(fields=[f.strip() for f in fields_env], date_range_type=drt, time_granularity=gran)
-                sql_ctx = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} range={drt}"
+                sql_used = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} range={drt}"
             else:
                 end = date.today()
                 start = end - timedelta(days=30)
@@ -427,11 +619,9 @@ if st.session_state.pending is not None:
                     date_to=end.isoformat(),
                     time_granularity=gran,
                 )
-                sql_ctx = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} {start}..{end}"
+                sql_used = f"Supermetrics IGI fields={','.join([f.strip() for f in fields_env])} {start}..{end}"
 
-            findings = ai_key_findings(q_user, df, sql_ctx, n=6)
-            st.session_state.insights[idx]["findings"] = findings
-            st.session_state.insights[idx]["sql"] = "Supermetrics (IGI)"
+            findings = ai_key_findings(q_user, df, sql_used, n=6)
 
         # ---------------- Facebook ----------------
         elif current_source.startswith("Facebook"):
@@ -449,46 +639,45 @@ if st.session_state.pending is not None:
                 date_to=end.isoformat(),
                 time_granularity="day",
             )
-
-            findings = ai_key_findings(q_user, df, f"Supermetrics FB fields={','.join(fields)} {start}..{end}", n=6)
-            st.session_state.insights[idx]["findings"] = findings
-            st.session_state.insights[idx]["sql"] = "Supermetrics (FB)"
+            sql_used = f"Supermetrics FB fields={','.join(fields)} {start}..{end}"
+            findings = ai_key_findings(q_user, df, sql_used, n=6)
 
         else:
-            st.session_state.insights[idx]["findings"] = [
-                {"title": "Fonte não suportada", "text": "Selecione uma fonte válida."}
-            ]
-            st.session_state.insights[idx]["sql"] = ""
+            raise RuntimeError("Fonte não suportada. Selecione uma fonte válida.")
+
+        # --- Persist results as messages ---
+        if job["kind"] == "summary":
+            # compact bullet summary from findings (title+text -> bullet)
+            bullets = []
+            for it in findings[:5]:
+                t = (it.get("title") or "").strip()
+                x = (it.get("text") or "").strip()
+                if t and x:
+                    bullets.append(f"{t}: {x}")
+                elif x:
+                    bullets.append(x)
+
+            msg = {"role": "assistant", "type": "summary", "bullets": bullets, "ts": time.time()}
+            st.session_state.summary_cached[current_source] = msg
+            st.session_state.messages.append(msg)
+
+        else:
+            st.session_state.messages.append({
+                "role": "assistant",
+                "type": "findings",
+                "intro": "Answer based on the selected data source.",
+                "findings": findings,
+                "sql": sql_used,
+                "ts": time.time()
+            })
 
     except Exception as e:
-        st.session_state.insights[idx]["findings"] = [{"title": "Erro ao consultar", "text": str(e)}]
-        st.session_state.insights[idx]["sql"] = ""
+        st.session_state.messages.append({
+            "role": "assistant",
+            "type": "text",
+            "text": f"Erro ao consultar: {str(e)}",
+            "ts": time.time()
+        })
     finally:
-        st.session_state.pending = None
+        st.session_state.pending_job = None
         st.rerun()
-
-# --------- Render: Key Findings (mais recente) ---------
-if st.session_state.insights:
-    block = st.session_state.insights[0]
-    st.markdown('<div class="card kf-card">', unsafe_allow_html=True)
-    st.markdown('<div class="kf-title">Key Findings</div>', unsafe_allow_html=True)
-
-    if block["findings"] is None:
-        st.write("Gerando insights…")
-    else:
-        st.markdown('<ol class="kf-list">', unsafe_allow_html=True)
-        for it in block["findings"]:
-            title = escape(str(it.get("title", "Insight")))
-            text = escape(str(it.get("text", "")))
-            st.markdown(
-                f'<li><span class="kf-item-title">{title}</span>'
-                f'<span class="kf-item-text">{text}</span></li>',
-                unsafe_allow_html=True,
-            )
-        st.markgithub = ''
-        st.markdown("</ol>", unsafe_allow_html=True)
-
-    with st.expander("SQL usada (debug)"):
-        st.code(block.get("sql") or "", language="sql")
-else:
-    st.info("Use os quick prompts acima ou escreva sua pergunta e clique em **Send** para gerar os insights.")
