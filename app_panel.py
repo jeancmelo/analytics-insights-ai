@@ -103,7 +103,7 @@ st.markdown(
   position: sticky;
   top: 44px; /* desce mais para não colidir com barras do host (Railway) */
   z-index: 50;
-  padding: 40px 14px 12px; /* mais margem no topo para a logo */
+  padding: 22px 14px 12px; /* mais margem no topo para a logo */
   background: linear-gradient(180deg, rgba(11,15,20,0.98) 0%, rgba(11,15,20,0.90) 60%, rgba(11,15,20,0.0) 100%);
   backdrop-filter: blur(10px);
 }}
