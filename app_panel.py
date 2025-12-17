@@ -101,9 +101,9 @@ st.markdown(
 /* Ajuste de “top bar” (Railway / browser overlay) */
 .ai-header {{
   position: sticky;
-  top: 26px; /* desce um pouco para não colidir com barras do host */
+  top: 44px; /* desce mais para não colidir com barras do host (Railway) */
   z-index: 50;
-  padding: 14px 14px 12px;
+  padding: 22px 14px 12px; /* mais margem no topo para a logo */
   background: linear-gradient(180deg, rgba(11,15,20,0.98) 0%, rgba(11,15,20,0.90) 60%, rgba(11,15,20,0.0) 100%);
   backdrop-filter: blur(10px);
 }}
@@ -465,34 +465,38 @@ for m in st.session_state.messages:
     else:
         with st.chat_message("assistant"):
             if m.get("type") == "summary":
-                st.markdown('<div class="bubble">', unsafe_allow_html=True)
-                st.markdown('<div class="bubble-title">Resumo geral</div>', unsafe_allow_html=True)
-                bullets = m.get("bullets", [])
-                if bullets:
-                    for b in bullets[:6]:
-                        st.markdown(f"- {escape(b)}")
-                else:
-                    st.markdown(f'<div class="bubble-muted">{escape(m.get("text",""))}</div>', unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                # Importante: renderizar o bubble em UMA única chamada para evitar “balão vazio”
+                summary_text = (m.get("text") or "").strip()
+                if not summary_text:
+                    # fallback: junta bullets (se existirem) numa frase única
+                    bullets = m.get("bullets", []) or []
+                    summary_text = " ".join([str(b).strip() for b in bullets if str(b).strip()])
+
+                html = (
+                    f"<div class='bubble'>"
+                    f"  <div class='bubble-title'>Resumo geral</div>"
+                    f"  <div class='bubble-muted'>{escape(summary_text)}</div>"
+                    f"</div>"
+                )
+                st.markdown(html, unsafe_allow_html=True)
 
             elif m.get("type") == "findings":
-                st.markdown('<div class="bubble">', unsafe_allow_html=True)
-                intro = m.get("intro") or "Resposta com base na fonte de dados selecionada:"
-                st.markdown(f'<div class="bubble-muted">{escape(intro)}</div>', unsafe_allow_html=True)
-
-                for it in m.get("findings", [])[:10]:
+                intro = (m.get("intro") or "Aqui vai uma resposta objetiva baseada nos dados:").strip()
+                parts = [
+                    "<div class='bubble'>",
+                    f"<div class='bubble-muted'>{escape(intro)}</div>",
+                ]
+                for it in (m.get("findings", []) or [])[:10]:
                     title = escape(str(it.get("title", "Insight")))
                     text = escape(str(it.get("text", "")))
-                    st.markdown(
-                        f"""
-<div class="finding-card">
-  <div class="finding-title">{title}</div>
-  <div class="finding-text">{text}</div>
-</div>
-""",
-                        unsafe_allow_html=True,
+                    parts.append(
+                        "<div class='finding-card'>"
+                        f"<div class='finding-title'>{title}</div>"
+                        f"<div class='finding-text'>{text}</div>"
+                        "</div>"
                     )
-                st.markdown("</div>", unsafe_allow_html=True)
+                parts.append("</div>")
+                st.markdown("\n".join(parts), unsafe_allow_html=True)
 
                 with st.expander("SQL usada (debug)"):
                     st.code(m.get("sql") or "", language="sql")
@@ -640,7 +644,27 @@ if st.session_state.pending_job is not None:
                 elif x:
                     bullets.append(x)
 
-            msg = {"role": "assistant", "type": "summary", "bullets": bullets, "ts": time.time()}
+            # Resumo em formato de mini-texto (contextual), sem bullets na UI.
+            # Mantemos bullets só como fallback/debug.
+            sentences = []
+            for b in bullets:
+                b = str(b).strip()
+                if not b:
+                    continue
+                if ":" in b:
+                    sentences.append(b.split(":", 1)[1].strip())
+                else:
+                    sentences.append(b)
+            summary_text = " ".join(sentences).strip()
+            if summary_text:
+                summary_text = "Resumo do período: " + summary_text
+            msg = {
+                "role": "assistant",
+                "type": "summary",
+                "text": summary_text,
+                "bullets": bullets,
+                "ts": time.time(),
+            }
             st.session_state.summary_cached[current_source] = msg
             st.session_state.messages.append(msg)
         else:
