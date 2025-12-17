@@ -3,6 +3,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from html import escape
+
 from supermetrics_adapter import (
     instagram_adapter_from_env,
     facebook_pages_adapter_from_env,
@@ -12,6 +13,7 @@ from supermetrics_adapter import (
 try:
     from streamlit.web.server import websocket_headers as wh
     _orig_get = wh._get_websocket_headers
+
     def _patched_get(*args, **kwargs):
         headers = _orig_get(*args, **kwargs)
         headers["Content-Security-Policy"] = (
@@ -19,6 +21,7 @@ try:
         )
         headers.pop("X-Frame-Options", None)
         return headers
+
     wh._get_websocket_headers = _patched_get
 except Exception:
     pass
@@ -27,11 +30,11 @@ except Exception:
 st.set_page_config(page_title="AI Insights Panel", layout="wide")
 
 # ---------------- ENV VARS ----------------
-BQ_TABLE = os.getenv("BQ_TABLE", "").strip()  # fallback (uma única tabela)
+BQ_TABLE = os.getenv("BQ_TABLE", "").strip()  # fallback
 
 DEFAULT_FACT_GA4 = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ga4_page_day"
 DEFAULT_FACT_GSC = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_gsc_page_day"
-DEFAULT_AI_READY  = "wyp-analytics.wyp_gold_client_rubis_gas.vw_ai_page_performance_day"
+DEFAULT_AI_READY = "wyp-analytics.wyp_gold_client_rubis_gas.vw_ai_page_performance_day"
 
 BQ_VIEW_FACT_GA4 = os.getenv("BQ_VIEW_FACT_GA4", DEFAULT_FACT_GA4).strip()
 BQ_VIEW_FACT_GSC = os.getenv("BQ_VIEW_FACT_GSC", DEFAULT_FACT_GSC).strip()
@@ -44,9 +47,8 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
 # Logo (black SVG) provided by you
 WYP_LOGO_URL = "https://wyperformance.com/wp-content/themes/wyp/dist/img/logo-wyperformance-black.svg"
 
-# Subtle brand accents (keep professional)
-BRAND_ACCENT = "#F15A24"   # warm orange (use sparingly)
-BRAND_ACCENT_2 = "#E11D48" # optional red accent (super subtle if used)
+# Subtle brand accents (use sparingly)
+BRAND_ACCENT = "#F15A24"
 
 if not SA_JSON:
     st.error("Defina GOOGLE_APPLICATION_CREDENTIALS_JSON (conteúdo do JSON da Service Account).")
@@ -88,25 +90,22 @@ if OPENAI_KEY:
 st.markdown(
     f"""
 <style>
-/* Layout base (painel limpo, SaaS) */
+/* Base */
 [data-testid="stAppViewContainer"] {{
   background: #0B0F14;
 }}
 .block-container {{
-  padding: 20px 18px 130px !important; /* espaço para o composer */
-  max-width: 520px !important;         /* mantém o painel “premium” */
+  padding: 20px 18px 160px !important; /* espaço para o composer */
+  max-width: 520px !important;
 }}
-/* Remove gaps agressivos */
-[class^="st-emotion-cache-"] {{ gap: 0 !important; row-gap: 10px !important; }}
-
-/* Header custom */
+/* Ajuste de “top bar” (Railway / browser overlay) */
 .ai-header {{
   position: sticky;
-  top: 0;
+  top: 26px; /* desce um pouco para não colidir com barras do host */
   z-index: 50;
   padding: 14px 14px 12px;
   background: linear-gradient(180deg, rgba(11,15,20,0.98) 0%, rgba(11,15,20,0.90) 60%, rgba(11,15,20,0.0) 100%);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }}
 .ai-topbar {{
   display: grid;
@@ -114,10 +113,9 @@ st.markdown(
   align-items: center;
   gap: 10px;
 }}
-.ai-title {{
-  font-size: 13px;
-  color: rgba(255,255,255,0.72);
-  letter-spacing: 0.2px;
+.ai-left-spacer {{
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
 }}
 .logo-pill {{
   justify-self: center;
@@ -133,10 +131,10 @@ st.markdown(
   height: 18px;
   display:block;
 }}
-.close-hint {{
+.ai-right-spacer {{
   justify-self: end;
   font-size: 12px;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.30);
 }}
 .accent-line {{
   height: 2px;
@@ -145,33 +143,52 @@ st.markdown(
   margin-top: 10px;
 }}
 
-/* Card base */
-.card {{
+/* “Bubble” visual consistente (para summary e respostas) */
+.bubble {{
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
   padding: 14px 14px;
   box-shadow: 0 14px 40px rgba(0,0,0,0.35);
 }}
-.card h3 {{
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: rgba(255,255,255,0.9);
-  font-weight: 700;
+.bubble-title {{
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  margin: 0 0 10px 0;
 }}
-.muted {{
-  color: rgba(255,255,255,0.65);
-  font-size: 12.5px;
+.bubble-muted {{
+  color: rgba(255,255,255,0.70);
+  font-size: 12.8px;
+  line-height: 1.4;
+}}
+
+.finding-card {{
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin: 10px 0;
+}}
+.finding-title {{
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  font-size: 12.8px;
+  margin-bottom: 4px;
+}}
+.finding-text {{
+  color: rgba(255,255,255,0.72);
+  font-size: 12.7px;
   line-height: 1.35;
 }}
 
-/* Datasource row */
+/* Datasource badge */
 .ds-row {{
   display:flex;
   align-items:center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 8px;
 }}
 .ds-badge {{
   font-size: 12px;
@@ -185,27 +202,7 @@ st.markdown(
   text-overflow: ellipsis;
 }}
 
-/* Chat bubbles (Streamlit chat_message uses internal styles; we enhance cards inside assistant) */
-.finding-card {{
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 10px 12px;
-  margin: 10px 0;
-}}
-.finding-title {{
-  font-weight: 800;
-  color: rgba(255,255,255,0.92);
-  font-size: 12.8px;
-  margin-bottom: 4px;
-}}
-.finding-text {{
-  color: rgba(255,255,255,0.70);
-  font-size: 12.6px;
-  line-height: 1.35;
-}}
-
-/* Composer fixo (input) */
+/* Composer fixo */
 .composer {{
   position: fixed;
   right: 18px;
@@ -219,10 +216,11 @@ st.markdown(
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: 18px;
   padding: 10px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
   box-shadow: 0 18px 60px rgba(0,0,0,0.55);
 }}
-/* Buttons subtle */
+
+/* Buttons */
 .stButton > button {{
   border-radius: 12px !important;
   border: 1px solid rgba(255,255,255,0.10) !important;
@@ -233,7 +231,6 @@ st.markdown(
   border-color: rgba(255,255,255,0.18) !important;
   background: rgba(255,255,255,0.07) !important;
 }}
-/* Primary send */
 .send-btn .stButton > button {{
   background: {BRAND_ACCENT}15 !important;
   border-color: {BRAND_ACCENT}55 !important;
@@ -243,7 +240,7 @@ st.markdown(
   border-color: {BRAND_ACCENT}77 !important;
 }}
 
-/* Make selectbox blend */
+/* Selectbox blend */
 [data-testid="stSelectbox"] > div {{
   background: rgba(255,255,255,0.04) !important;
   border: 1px solid rgba(255,255,255,0.10) !important;
@@ -266,7 +263,7 @@ def sanitize_sql(text: str) -> str:
     t = re.sub(r"^```(?:sql)?\s*|\s*```$", "", t, flags=re.IGNORECASE | re.DOTALL)
     m = re.search(r"\bselect\b", t, flags=re.IGNORECASE)
     if m:
-        t = t[m.start() :]
+        t = t[m.start():]
     return t.strip().rstrip(";")
 
 def sql_is_safe(sql: str, allowed_table_fqn: str) -> bool:
@@ -343,7 +340,7 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 6):
     system = (
         "Você é um analista de Marketing/SEO. Gere insights curtos e acionáveis "
         "com base nos dados fornecidos. Responda em JSON válido com a chave 'findings'. "
-        "Não descreva SQL, não invente números; use apenas o que vier nos dados."
+        "Não invente números; use apenas o que vier nos dados."
     )
     user = (
         f"Gere até {n} findings (curtos). Estrutura:\n"
@@ -366,7 +363,7 @@ def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 6):
         out = []
         for it in findings[:n]:
             title = str(it.get("title", "Insight")).strip()[:120]
-            text  = str(it.get("text", "")).strip()
+            text = str(it.get("text", "")).strip()
             if text:
                 out.append({"title": title or "Insight", "text": text})
         return out or [{"title": "Sem insights", "text": "Os dados retornados são muito curtos para gerar achados úteis."}]
@@ -386,24 +383,24 @@ def _active_bq_table_and_kind(selected_source: str):
 
 # ---------------- STATE ----------------
 if "messages" not in st.session_state:
-    st.session_state.messages = []  # {role: "user"/"assistant", type: "...", ...}
+    st.session_state.messages = []
 if "active_source" not in st.session_state:
     st.session_state.active_source = None
 if "summary_cached" not in st.session_state:
-    st.session_state.summary_cached = {}  # source -> summary_msg
+    st.session_state.summary_cached = {}
 if "pending_job" not in st.session_state:
-    st.session_state.pending_job = None  # dict
+    st.session_state.pending_job = None
 
 # ---------------- HEADER ----------------
 st.markdown(
     f"""
 <div class="ai-header">
   <div class="ai-topbar">
-    <div class="ai-title">AI Insights</div>
+    <div class="ai-left-spacer"></div>
     <div class="logo-pill">
       <img src="{WYP_LOGO_URL}" alt="Wyperformance" />
     </div>
-    <div class="close-hint">close (X)</div>
+    <div class="ai-right-spacer"></div>
   </div>
   <div class="accent-line"></div>
 </div>
@@ -413,7 +410,7 @@ st.markdown(
 
 # ---------------- DATASOURCE SELECT ----------------
 source = st.selectbox(
-    "Data source",
+    "Fonte de dados",
     [
         "Rubis Gas – AI Ready (GA4 + GSC + Screaming Frog)",
         "Rubis Gas – FACT (GSC por URL/dia)",
@@ -427,55 +424,40 @@ source = st.selectbox(
 st.markdown(
     f"""
 <div class="ds-row">
-  <div class="ds-badge">Using: {escape(source)}</div>
+  <div class="ds-badge">Usando: {escape(source)}</div>
 </div>
 """,
     unsafe_allow_html=True,
 )
 
 def _push_assistant_summary_for_source(selected_source: str):
-    """
-    Cria um resumo curto (geral do site) e adiciona como 1ª mensagem do assistant.
-    - Para Rubis: usa uma pergunta padrão que teu pipeline já suporta.
-    - Para IG/FB: também funciona, mas fica mais “geral”.
-    """
     if selected_source in st.session_state.summary_cached:
-        # já temos summary para esta fonte: mostra no topo do chat se ainda não existe na timeline
         return
 
     if selected_source.startswith("Rubis Gas"):
         q = (
-            "Give me a short overall site summary for this period in 3-5 bullets. "
-            "Focus on the most important issues/opportunities (technical SEO, indexing, CTR, performance)."
+            "Crie um resumo geral bem curto do site para o período selecionado em 3-5 bullets. "
+            "Foque no que mais importa (SEO técnico, indexação, CTR e performance)."
         )
     else:
         q = (
-            "Give me a short overall performance summary for this period in 3-5 bullets. "
-            "Focus on what changed and what to do next."
+            "Crie um resumo geral de performance para o período selecionado em 3-5 bullets. "
+            "Foque em mudanças e próximos passos."
         )
 
-    # agenda um job de background (mesmo flow que tu já tens)
-    st.session_state.pending_job = {
-        "kind": "summary",
-        "source": selected_source,
-        "question": q,
-    }
+    st.session_state.pending_job = {"kind": "summary", "source": selected_source, "question": q}
 
 def _enqueue_user_question(selected_source: str, question: str):
     st.session_state.messages.append({"role": "user", "type": "text", "text": question.strip(), "ts": time.time()})
-    st.session_state.pending_job = {
-        "kind": "chat",
-        "source": selected_source,
-        "question": question.strip(),
-    }
+    st.session_state.pending_job = {"kind": "chat", "source": selected_source, "question": question.strip()}
 
-# Se trocou de fonte, reseta “pending” e injeta summary (uma vez por fonte)
+# Troca de fonte -> injeta summary (uma vez)
 if st.session_state.active_source != source:
     st.session_state.active_source = source
     _push_assistant_summary_for_source(source)
     st.rerun()
 
-# ---------------- RENDER CHAT (messages) ----------------
+# ---------------- RENDER CHAT ----------------
 for m in st.session_state.messages:
     if m["role"] == "user":
         with st.chat_message("user"):
@@ -483,24 +465,24 @@ for m in st.session_state.messages:
     else:
         with st.chat_message("assistant"):
             if m.get("type") == "summary":
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown("<h3>Overall summary</h3>", unsafe_allow_html=True)
+                st.markdown('<div class="bubble">', unsafe_allow_html=True)
+                st.markdown('<div class="bubble-title">Resumo geral</div>', unsafe_allow_html=True)
                 bullets = m.get("bullets", [])
                 if bullets:
                     for b in bullets[:6]:
                         st.markdown(f"- {escape(b)}")
                 else:
-                    st.markdown(f'<div class="muted">{escape(m.get("text",""))}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="bubble-muted">{escape(m.get("text",""))}</div>', unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
             elif m.get("type") == "findings":
-                # render insights como cards (conversa + visual premium)
-                intro = m.get("intro") or "Here are the key insights:"
-                st.markdown(f"<div class='muted'>{escape(intro)}</div>", unsafe_allow_html=True)
+                st.markdown('<div class="bubble">', unsafe_allow_html=True)
+                intro = m.get("intro") or "Resposta com base na fonte de dados selecionada:"
+                st.markdown(f'<div class="bubble-muted">{escape(intro)}</div>', unsafe_allow_html=True)
 
                 for it in m.get("findings", [])[:10]:
                     title = escape(str(it.get("title", "Insight")))
-                    text  = escape(str(it.get("text", "")))
+                    text = escape(str(it.get("text", "")))
                     st.markdown(
                         f"""
 <div class="finding-card">
@@ -510,44 +492,47 @@ for m in st.session_state.messages:
 """,
                         unsafe_allow_html=True,
                     )
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                with st.expander("SQL used (debug)"):
+                with st.expander("SQL usada (debug)"):
                     st.code(m.get("sql") or "", language="sql")
             else:
                 st.markdown(escape(m.get("text", "")))
 
 # ---------------- COMPOSER (fixo) ----------------
+def on_clear():
+    st.session_state.messages = []
+    st.session_state.pending_job = None
+    st.session_state["composer_input"] = ""
+
+def on_send():
+    q = (st.session_state.get("composer_input") or "").strip()
+    if not q:
+        return
+    _enqueue_user_question(source, q)
+    st.session_state["composer_input"] = ""  # OK dentro do callback
+
 st.markdown('<div class="composer"><div class="composer-inner">', unsafe_allow_html=True)
 col_a, col_b, col_c = st.columns([0.76, 0.14, 0.10])
 
 with col_a:
-    user_q = st.text_area(
-        "Ask",
+    st.text_area(
+        "Pergunta",
         label_visibility="collapsed",
         height=52,
-        placeholder="Ask about the report… e.g., What should I prioritize this month?",
+        placeholder="Pergunta sobre o relatório… ex.: O que devo priorizar este mês?",
         key="composer_input",
     )
 
 with col_b:
     st.markdown('<div class="send-btn">', unsafe_allow_html=True)
-    send = st.button("Send", use_container_width=True)
+    st.button("Enviar", use_container_width=True, on_click=on_send)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_c:
-    clear = st.button("Clear", use_container_width=True)
+    st.button("Limpar", use_container_width=True, on_click=on_clear)
 
 st.markdown("</div></div>", unsafe_allow_html=True)
-
-if clear:
-    st.session_state.messages = []
-    st.session_state.pending_job = None
-    st.rerun()
-
-if send and user_q and user_q.strip():
-    _enqueue_user_question(source, user_q.strip())
-    st.session_state["composer_input"] = ""
-    st.rerun()
 
 # ---------------- PROCESS PENDING JOB ----------------
 if st.session_state.pending_job is not None:
@@ -565,7 +550,6 @@ if st.session_state.pending_job is not None:
             if not active_table:
                 raise RuntimeError("Nenhuma tabela/view configurada. Defina BQ_VIEW_* ou BQ_TABLE.")
 
-            # schema
             try:
                 schema_cols = get_table_schema(active_table)
             except Forbidden as e:
@@ -647,7 +631,6 @@ if st.session_state.pending_job is not None:
 
         # --- Persist results as messages ---
         if job["kind"] == "summary":
-            # compact bullet summary from findings (title+text -> bullet)
             bullets = []
             for it in findings[:5]:
                 t = (it.get("title") or "").strip()
@@ -660,12 +643,11 @@ if st.session_state.pending_job is not None:
             msg = {"role": "assistant", "type": "summary", "bullets": bullets, "ts": time.time()}
             st.session_state.summary_cached[current_source] = msg
             st.session_state.messages.append(msg)
-
         else:
             st.session_state.messages.append({
                 "role": "assistant",
                 "type": "findings",
-                "intro": "Answer based on the selected data source.",
+                "intro": "Aqui vai uma resposta objetiva baseada nos dados:",
                 "findings": findings,
                 "sql": sql_used,
                 "ts": time.time()
