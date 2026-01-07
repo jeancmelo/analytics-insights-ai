@@ -650,10 +650,10 @@ for m in st.session_state.messages:
                 st.markdown(html, unsafe_allow_html=True)
 
             elif m.get("type") == "findings":
-                intro = (m.get("intro") or "Aqui vai uma resposta objetiva baseada nos dados:").strip()
+                intro = (m.get("intro") or "Resposta baseado nos dados:").strip()
                 parts = [
                     "<div class='bubble'>",
-                    f"<div class='bubble-muted'>{escape(intro)}</div>",
+                    f"<div class='bubble-muted'>{intro}</div>",
                 ]
                 for it in (m.get("findings", []) or [])[:10]:
                     title = escape(str(it.get("title", "Insight")))
@@ -928,7 +928,7 @@ if st.session_state.pending_job is not None:
                 "role": "assistant",
                 "type": "findings",
                 "intro": (
-                    "Aqui vai uma resposta objetiva baseada nos dados "
+                    "Resposta baseada nos dados: "
                     f"<span style='padding:2px 8px;border-radius:999px;"
                     f"background:#1f2933;font-size:12px;margin-left:6px;'>"
                     f"{source_label}</span>"
