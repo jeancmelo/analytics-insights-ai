@@ -704,8 +704,12 @@ if st.session_state.pending_job is not None:
         current_source = job["source"]
         q_user = job["question"]
 
+    if job["kind"] == "chat":
         intent = detect_intent(q_user)
         st.sidebar.caption(f"🔎 Detected intent: {intent}")
+    else:
+        st.sidebar.caption(f"🔎 Summary context: {table_kind}")
+
 
 
 
@@ -714,7 +718,9 @@ if st.session_state.pending_job is not None:
             if not bq:
                 raise RuntimeError("BigQuery não inicializado. Verifique GOOGLE_APPLICATION_CREDENTIALS_JSON.")
 
-            active_table, table_kind = _active_bq_table_and_kind(current_source, q_user)
+            routing_question = q_user if job["kind"] == "chat" else ""
+            active_table, table_kind = _active_bq_table_and_kind(current_source, routing_question)
+
             summary_prompt = summary_prompt_for_kind(table_kind)
             question_for_sql = summary_prompt if job["kind"] == "summary" else q_user
 
@@ -735,11 +741,37 @@ if st.session_state.pending_job is not None:
             except NotFound:
                 raise RuntimeError(f"A VIEW não existe. Confirme o nome: {active_table}")
 
-            sql = build_sql_with_ai(question_for_sql, active_table, schema_cols, table_kind)
-            if not sql or not sql_is_safe(sql, active_table):
-                findings = [{"title": "Consulta inválida", "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."}]
-                sql_used = sql or ""
-                df = pd.DataFrame()
+            if job["kind"] == "summary":
+                if table_kind == "FACT_ADS_CAMPAIGN":
+                    sql = f"""
+                    SELECT
+                      SUM(ads_cost_eur) AS cost_eur,
+                      SUM(ads_conversions) AS conversions,
+                      SAFE_DIVIDE(SUM(ads_cost_eur), NULLIF(SUM(ads_conversions),0)) AS cpa_eur,
+                      SAFE_DIVIDE(SUM(ads_clicks), SUM(ads_impressions)) AS ctr
+                    FROM `{active_table}`
+                    WHERE data_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+                    """
+                else:
+                    sql = f"""
+                    SELECT
+                      SUM(ga_sessions) AS sessions,
+                      SUM(gsc_clicks) AS clicks,
+                      SUM(gsc_impressions) AS impressions,
+                      SAFE_DIVIDE(SUM(gsc_clicks), SUM(gsc_impressions)) AS ctr
+                    FROM `{active_table}`
+                    WHERE data_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+                    """
+
+                sql_used = sql.strip()
+                df = bq.query(sql).result().to_dataframe()
+            else:
+                sql = build_sql_with_ai(question_for_sql, active_table, schema_cols, table_kind)
+                if not sql or not sql_is_safe(sql, active_table):
+                    findings = [{"title": "Consulta inválida", "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."}]
+                    sql_used = sql or ""
+                    df = pd.DataFrame()
+
             else:
                 sql = ensure_limit(sql)
                 fallback_used = False
