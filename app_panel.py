@@ -35,10 +35,12 @@ BQ_TABLE = os.getenv("BQ_TABLE", "").strip()  # fallback
 DEFAULT_FACT_GA4 = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ga4_page_day"
 DEFAULT_FACT_GSC = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_gsc_page_day"
 DEFAULT_AI_READY = "wyp-analytics.wyp_gold_client_rubis_gas.vw_ai_page_performance_day"
+DEFAULT_VIEW_ADS  = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ads_campaign_day"
 
 BQ_VIEW_FACT_GA4 = os.getenv("BQ_VIEW_FACT_GA4", DEFAULT_FACT_GA4).strip()
 BQ_VIEW_FACT_GSC = os.getenv("BQ_VIEW_FACT_GSC", DEFAULT_FACT_GSC).strip()
 BQ_VIEW_AI_READY = os.getenv("BQ_VIEW_AI_READY", DEFAULT_AI_READY).strip()
+BQ_VIEW_ADS  = os.getenv("BQ_VIEW_ADS", DEFAULT_VIEW_ADS).strip()
 
 SA_JSON = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 OPENAI_KEY = os.getenv("OPENAI_API", "").strip()
@@ -254,6 +256,62 @@ label, .stCaption {{
     unsafe_allow_html=True,
 )
 
+# ---------------- Helpers: Fallback  ----------------
+def should_fallback_to_page(table_kind: str, df) -> bool:
+    return table_kind == "FACT_ADS_CAMPAIGN" and (df is None or df.empty)
+
+# ---------------- Helpers: Summary Prompt  ----------------
+def summary_prompt_for_kind(table_kind: str) -> str:
+    if table_kind == "FACT_ADS_CAMPAIGN":
+        return (
+            "Crie um resumo curto (3-5 bullets) da performance de Google Ads no período. "
+            "Inclua gasto total (EUR), conversões, CPA (EUR), CTR e as campanhas com melhor e pior eficiência. "
+            "Termine com 2 próximos passos práticos."
+        )
+
+    # default: páginas / SEO
+    return (
+        "Crie um resumo curto (3-5 bullets) da performance orgânica e técnica do site no período. "
+        "Inclua sessões (GA4), cliques/impressões/CTR (GSC) e principais oportunidades ou problemas (Screaming Frog). "
+        "Termine com 2 próximos passos práticos."
+    )
+
+
+# ---------------- Helpers: Auto detect ----------------
+def detect_intent(user_question: str) -> str:
+    """
+    Decide se a pergunta é sobre ADS ou sobre PÁGINAS / SEO.
+    Retorna: 'ADS' ou 'PAGE'
+    """
+    if not user_question:
+        return "PAGE"
+
+    q = user_question.lower()
+
+    ads_terms = [
+        "ads", "google ads", "campanha", "campanhas", "pmax",
+        "cpc", "cpa", "ctr", "conversões pagas", "conversao paga",
+        "orçamento", "orcamento", "budget", "gasto", "custo",
+        "roas", "paid", "ppc"
+    ]
+
+    page_terms = [
+        "seo", "url", "página", "pagina", "páginas", "paginas",
+        "landing", "site", "conteúdo", "conteudo",
+        "gsc", "search console", "ga4", "orgânico", "organico",
+        "impressões", "impressao", "posição", "posicao"
+    ]
+
+    if any(term in q for term in ads_terms):
+        return "ADS"
+
+    if any(term in q for term in page_terms):
+        return "PAGE"
+
+    # fallback seguro
+    return "PAGE"
+
+
 # ---------------- Helpers: SQL ----------------
 def sanitize_sql(text: str) -> str:
     if not text:
@@ -298,29 +356,52 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: 
             "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
             "- Métricas GSC: clicks=SUM(gsc_clicks), impressions=SUM(gsc_impressions), ctr=SAFE_DIVIDE(SUM(gsc_clicks), SUM(gsc_impressions)), avg_position=AVG(gsc_avg_position).\n"
             "- Métricas GA4: pageviews=SUM(ga_pageviews), sessions=SUM(ga_sessions).\n"
-            "- Para análise temporal, pode usar deltas (delta_*_7d). Para diagnóstico, pode usar flags (flag_*).\n"
             "- Para rankings, ordene por impressions, clicks, sessions ou pageviews e limite resultados longos.\n"
+            "- Use GROUP BY ao selecionar dimensões como url ou data_date.\n"
         )
+
     elif table_kind == "FACT_GSC":
         rules = (
             "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
             "- Métricas: clicks=SUM(gsc_clicks), impressions=SUM(gsc_impressions), ctr=SAFE_DIVIDE(SUM(gsc_clicks), SUM(gsc_impressions)), avg_position=AVG(gsc_avg_position).\n"
             "- Para rankings, ordene por impressions ou clicks e limite resultados longos.\n"
+            "- Use GROUP BY ao selecionar dimensões como url ou data_date.\n"
         )
-    else:
+
+    elif table_kind == "FACT_GA4":
         rules = (
             "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
             "- Métricas: pageviews=SUM(ga_pageviews), sessions=SUM(ga_sessions).\n"
             "- Para rankings, ordene por sessions ou pageviews e limite resultados longos.\n"
+            "- Use GROUP BY ao selecionar dimensões como url ou data_date.\n"
+        )
+
+    elif table_kind == "FACT_ADS_CAMPAIGN":
+        rules = (
+            "- A tabela tem uma linha por campanha e dia.\n"
+            "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
+            "- Métricas Ads: clicks=SUM(ads_clicks), impressions=SUM(ads_impressions), cost_eur=SUM(ads_cost_eur), conversions=SUM(ads_conversions), value=SUM(ads_total_conversion_value).\n"
+            "- Métricas derivadas: ctr=SAFE_DIVIDE(SUM(ads_clicks), SUM(ads_impressions)), cpc=SAFE_DIVIDE(SUM(ads_cost_eur), NULLIF(SUM(ads_clicks),0)), cpa=SAFE_DIVIDE(SUM(ads_cost_eur), NULLIF(SUM(ads_conversions),0)).\n"
+            "- Dimensões comuns: campaign_name, channel_type, campaign_status.\n"
+            "- Não use URL, nem métricas de GA4/GSC.\n"
+            "- Para rankings, ordene por cost_eur, conversions, clicks ou impressions e use LIMIT.\n"
+        )
+
+    else:
+        rules = (
+            "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
+            "- Use apenas as colunas fornecidas no schema.\n"
+            "- Para rankings, use ORDER BY e LIMIT.\n"
         )
 
     user = (
         f"Tabela alvo: `{table_fqn}`.\n"
         f"Colunas disponíveis:\n{cols_txt}\n\n"
-        f"Regras específicas:\n{rules}"
+        f"Regras específicas:\n{rules}\n"
         f"- Comece diretamente com SELECT.\n\n"
         f"Pergunta do usuário:\n{question}\n"
     )
+
 
     resp = client.chat.completions.create(
         model=OPENAI_MODEL,
@@ -439,16 +520,25 @@ def ai_key_findings(
         return [{"title": "Erro ao gerar insights", "text": str(e)}]
 
 
-def _active_bq_table_and_kind(selected_source: str):
+def _active_bq_table_and_kind(selected_source: str, question: str = ""):
+    # Quando estiver no "AI Ready", roteia automaticamente com base na pergunta
     if selected_source.startswith("Rubis Gas – AI Ready"):
+        intent = detect_intent(question or "")
+        if intent == "ADS":
+            return BQ_VIEW_ADS, "FACT_ADS_CAMPAIGN"
         return BQ_VIEW_AI_READY, "AI_READY"
+
+    # Mantém as opções manuais FACT
     if selected_source.startswith("Rubis Gas – FACT (GSC"):
         return BQ_VIEW_FACT_GSC, "FACT_GSC"
     if selected_source.startswith("Rubis Gas – FACT (GA4"):
         return BQ_VIEW_FACT_GA4, "FACT_GA4"
+
+    # Fallback
     if BQ_TABLE:
         return BQ_TABLE, "AI_READY"
     return "", "AI_READY"
+
 
 # ---------------- STATE ----------------
 if "messages" not in st.session_state:
@@ -614,12 +704,23 @@ if st.session_state.pending_job is not None:
         current_source = job["source"]
         q_user = job["question"]
 
+        intent = detect_intent(q_user)
+        st.sidebar.caption(f"🔎 Detected intent: {intent}")
+
+
+
         # ---------------- BigQuery (Rubis Gas) ----------------
         if current_source.startswith("Rubis Gas"):
             if not bq:
                 raise RuntimeError("BigQuery não inicializado. Verifique GOOGLE_APPLICATION_CREDENTIALS_JSON.")
 
-            active_table, table_kind = _active_bq_table_and_kind(current_source)
+            active_table, table_kind = _active_bq_table_and_kind(current_source, q_user)
+            summary_prompt = summary_prompt_for_kind(table_kind)
+            question_for_sql = summary_prompt if job["kind"] == "summary" else q_user
+
+            st.sidebar.caption(f"📌 Source: {current_source}")
+            st.sidebar.caption(f"📌 Routed to: {table_kind} → {active_table}")
+
             if not active_table:
                 raise RuntimeError("Nenhuma tabela/view configurada. Defina BQ_VIEW_* ou BQ_TABLE.")
 
@@ -634,26 +735,68 @@ if st.session_state.pending_job is not None:
             except NotFound:
                 raise RuntimeError(f"A VIEW não existe. Confirme o nome: {active_table}")
 
-            sql = build_sql_with_ai(q_user, active_table, schema_cols, table_kind)
+            sql = build_sql_with_ai(question_for_sql, active_table, schema_cols, table_kind)
             if not sql or not sql_is_safe(sql, active_table):
                 findings = [{"title": "Consulta inválida", "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."}]
                 sql_used = sql or ""
                 df = pd.DataFrame()
             else:
                 sql = ensure_limit(sql)
+                fallback_used = False
+
                 try:
                     df = bq.query(sql).result().to_dataframe()
+
+                    # -------- FALLBACK 5.2A: Ads sem dados --------
+                    if should_fallback_to_page(table_kind, df):
+                        fallback_used = True
+                        active_table = BQ_VIEW_AI_READY
+                        table_kind = "AI_READY"
+
+                        sql = build_sql_with_ai(
+                            question_for_sql,
+                            active_table,
+                            get_table_schema(active_table),
+                            table_kind
+                        )
+                        sql = ensure_limit(sql)
+                        df = bq.query(sql).result().to_dataframe()
+
                 except Forbidden as e:
                     raise RuntimeError(
                         "Permissão insuficiente para executar queries. "
                         "Garanta: bigquery.jobs.create no projeto e acesso de leitura nas tabelas base usadas pela VIEW. "
                         f"Detalhe: {e}"
                     )
-                except BadRequest as e:
-                    raise RuntimeError(f"SQL inválida gerada. Detalhe: {e}")
 
-                findings = ai_key_findings(q_user, df, sql, n=6)
+                except BadRequest as e:
+                    # -------- FALLBACK 5.2B: erro em Ads --------
+                    if table_kind == "FACT_ADS_CAMPAIGN":
+                        fallback_used = True
+                        active_table = BQ_VIEW_AI_READY
+                        table_kind = "AI_READY"
+
+                        sql = build_sql_with_ai(
+                            question_for_sql,
+                            active_table,
+                            get_table_schema(active_table),
+                            table_kind
+                        )
+                        sql = ensure_limit(sql)
+                        df = bq.query(sql).result().to_dataframe()
+                    else:
+                        raise RuntimeError(f"SQL inválida gerada. Detalhe: {e}")
+
+                # -------- Aviso elegante --------
+                if fallback_used:
+                    st.info(
+                        "Nota: não encontrei dados de Google Ads para este recorte. "
+                        "Usei os dados de performance do site (GA4, GSC e Screaming Frog) para responder."
+                    )
+
+                findings = ai_key_findings(question_for_sql, df, sql, n=6)
                 sql_used = sql
+
 
         # ---------------- Instagram ----------------
         elif current_source.startswith("Instagram"):
