@@ -705,9 +705,6 @@ if st.session_state.pending_job is not None:
         q_user = job["question"]
 
         
-
-
-
         # ---------------- BigQuery (Rubis Gas) ----------------
         if current_source.startswith("Rubis Gas"):
             if not bq:
@@ -768,69 +765,70 @@ if st.session_state.pending_job is not None:
 
                 sql_used = sql.strip()
                 df = bq.query(sql).result().to_dataframe()
+                findings = ai_key_findings(question_for_sql, df, sql_used, n=6)
+
             else:
                 sql = build_sql_with_ai(question_for_sql, active_table, schema_cols, table_kind)
+
                 if not sql or not sql_is_safe(sql, active_table):
-                    findings = [{"title": "Consulta inválida", "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."}]
+                    findings = [{
+                        "title": "Consulta inválida",
+                        "text": "Não foi possível gerar uma SQL segura. Refine a pergunta."
+                    }]
                     sql_used = sql or ""
                     df = pd.DataFrame()
 
                 else:
                     sql = ensure_limit(sql)
+                    sql_used = sql
                     fallback_used = False
+                    orig_table_kind = table_kind  # (ajuste 1)
 
-                try:
-                    df = bq.query(sql).result().to_dataframe()
-
-                    # -------- FALLBACK 5.2A: Ads sem dados --------
-                    if should_fallback_to_page(table_kind, df):
-                        fallback_used = True
-                        active_table = BQ_VIEW_AI_READY
-                        table_kind = "AI_READY"
-
-                        sql = build_sql_with_ai(
-                            question_for_sql,
-                            active_table,
-                            get_table_schema(active_table),
-                            table_kind
-                        )
-                        sql = ensure_limit(sql)
+                    try:
                         df = bq.query(sql).result().to_dataframe()
 
-                except Forbidden as e:
-                    raise RuntimeError(
-                        "Permissão insuficiente para executar queries. "
-                        "Garanta: bigquery.jobs.create no projeto e acesso de leitura nas tabelas base usadas pela VIEW. "
-                        f"Detalhe: {e}"
-                    )
+                        # FALLBACK 5.2A: Ads sem dados
+                        if should_fallback_to_page(table_kind, df):
+                            fallback_used = True
+                            active_table = BQ_VIEW_AI_READY
+                            table_kind = "AI_READY"
 
-                except BadRequest as e:
-                    # -------- FALLBACK 5.2B: erro em Ads --------
-                    if table_kind == "FACT_ADS_CAMPAIGN":
-                        fallback_used = True
-                        active_table = BQ_VIEW_AI_READY
-                        table_kind = "AI_READY"
+                            schema_cols_fb = get_table_schema(active_table)
+                            sql = build_sql_with_ai(question_for_sql, active_table, schema_cols_fb, table_kind)
+                            sql = ensure_limit(sql)
+                            sql_used = sql
+                            df = bq.query(sql).result().to_dataframe()
 
-                        sql = build_sql_with_ai(
-                            question_for_sql,
-                            active_table,
-                            get_table_schema(active_table),
-                            table_kind
+                    except Forbidden as e:
+                        raise RuntimeError(
+                            "Permissão insuficiente para executar queries. "
+                            "Garanta: bigquery.jobs.create no projeto e acesso de leitura nas tabelas base usadas pela VIEW. "
+                            f"Detalhe: {e}"
                         )
-                        sql = ensure_limit(sql)
-                        df = bq.query(sql).result().to_dataframe()
-                    else:
-                        raise RuntimeError(f"SQL inválida gerada. Detalhe: {e}")
 
-                # -------- Aviso elegante --------
-                if fallback_used:
-                    st.info(
-                        "Nota: não encontrei dados de Google Ads para este recorte. "
-                        "Usei os dados de performance do site (GA4, GSC e Screaming Frog) para responder."
-                    )
+                    except BadRequest as e:
+                        # FALLBACK 5.2B: erro em Ads (usa orig_table_kind)
+                        if orig_table_kind == "FACT_ADS_CAMPAIGN":
+                            fallback_used = True
+                            active_table = BQ_VIEW_AI_READY
+                            table_kind = "AI_READY"
 
-                findings = ai_key_findings(question_for_sql, df, sql, n=6)
-                sql_used = sql
+                            schema_cols_fb = get_table_schema(active_table)
+                            sql = build_sql_with_ai(question_for_sql, active_table, schema_cols_fb, table_kind)
+                            sql = ensure_limit(sql)
+                            sql_used = sql
+                            df = bq.query(sql).result().to_dataframe()
+                        else:
+                            raise RuntimeError(f"SQL inválida gerada. Detalhe: {e}")
+
+                    if fallback_used:
+                        st.info(
+                            "Nota: não encontrei dados de Google Ads para este recorte. "
+                            "Usei os dados de performance do site (GA4, GSC e Screaming Frog) para responder."
+                        )
+
+                    findings = ai_key_findings(question_for_sql, df, sql_used, n=6)
+
 
 
         # ---------------- Instagram ----------------
