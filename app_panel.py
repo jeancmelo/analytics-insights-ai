@@ -597,6 +597,17 @@ st.markdown(
 )
 
 # ---------------- DATASOURCE SELECT ----------------
+source = st.selectbox(
+    "Fonte de dados",
+    [
+        "Rubis Gas – AI Ready (GA4 + GSC + Screaming Frog)",
+        "Rubis Gas – FACT (GSC por URL/dia)",
+        "Rubis Gas – FACT (GA4 por URL/dia)",
+        "Instagram Insights (Supermetrics)",
+        "Facebook Page Insights (Supermetrics)",
+    ],
+    index=0,
+)
 
 def _push_assistant_summary_for_source(selected_source: str):
     if selected_source in st.session_state.summary_cached:
