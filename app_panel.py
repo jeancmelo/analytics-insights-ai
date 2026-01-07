@@ -704,11 +704,11 @@ if st.session_state.pending_job is not None:
         current_source = job["source"]
         q_user = job["question"]
 
-    if job["kind"] == "chat":
-        intent = detect_intent(q_user)
-        st.sidebar.caption(f"🔎 Detected intent: {intent}")
-    else:
-        st.sidebar.caption(f"🔎 Summary context: {table_kind}")
+        if job["kind"] == "chat":
+            intent = detect_intent(q_user)
+            st.sidebar.caption(f"🔎 Detected intent: {intent}")
+        else:
+            st.sidebar.caption(f"🔎 Summary context: {table_kind}")
 
 
 
