@@ -36,11 +36,15 @@ DEFAULT_FACT_GA4 = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ga4_page_day
 DEFAULT_FACT_GSC = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_gsc_page_day"
 DEFAULT_AI_READY = "wyp-analytics.wyp_gold_client_rubis_gas.vw_ai_page_performance_day"
 DEFAULT_VIEW_ADS  = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ads_campaign_day"
+DEFAULT_VIEW_ADS_KW = "wyp-analytics.wyp_gold_client_rubis_gas.vw_fact_ads_keywords_day"
+
 
 BQ_VIEW_FACT_GA4 = os.getenv("BQ_VIEW_FACT_GA4", DEFAULT_FACT_GA4).strip()
 BQ_VIEW_FACT_GSC = os.getenv("BQ_VIEW_FACT_GSC", DEFAULT_FACT_GSC).strip()
 BQ_VIEW_AI_READY = os.getenv("BQ_VIEW_AI_READY", DEFAULT_AI_READY).strip()
 BQ_VIEW_ADS  = os.getenv("BQ_VIEW_ADS", DEFAULT_VIEW_ADS).strip()
+BQ_VIEW_ADS_KW = os.getenv("BQ_VIEW_ADS_KW", DEFAULT_VIEW_ADS_KW).strip()
+
 
 SA_JSON = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 OPENAI_KEY = os.getenv("OPENAI_API", "").strip()
@@ -256,6 +260,16 @@ label, .stCaption {{
     unsafe_allow_html=True,
 )
 
+# ---------------- Helpers: label select source  ----------------
+def label_for_table_kind(table_kind: str) -> str:
+    return {
+        "AI_READY": "Site (GA4 + GSC + Screaming Frog)",
+        "FACT_ADS_CAMPAIGN": "Google Ads · Campanhas",
+        "FACT_ADS_KEYWORDS": "Google Ads · Keywords",
+        "FACT_GSC": "Search Console",
+        "FACT_GA4": "GA4",
+    }.get(table_kind, table_kind)
+
 # ---------------- Helpers: Fallback  ----------------
 def should_fallback_to_page(table_kind: str, df) -> bool:
     return table_kind == "FACT_ADS_CAMPAIGN" and (df is None or df.empty)
@@ -279,14 +293,16 @@ def summary_prompt_for_kind(table_kind: str) -> str:
 
 # ---------------- Helpers: Auto detect ----------------
 def detect_intent(user_question: str) -> str:
-    """
-    Decide se a pergunta é sobre ADS ou sobre PÁGINAS / SEO.
-    Retorna: 'ADS' ou 'PAGE'
-    """
     if not user_question:
         return "PAGE"
-
     q = user_question.lower()
+
+    ads_kw_terms = [
+        "keyword", "keywords", "palavra-chave", "palavras-chave",
+        "termo", "termos", "match type", "correspondência", "correspondencia",
+        "quality score", "quality", "ad group", "grupo de anúncios", "grupo de anuncios",
+        "search terms", "termos de pesquisa"
+    ]
 
     ads_terms = [
         "ads", "google ads", "campanha", "campanhas", "pmax",
@@ -299,17 +315,19 @@ def detect_intent(user_question: str) -> str:
         "seo", "url", "página", "pagina", "páginas", "paginas",
         "landing", "site", "conteúdo", "conteudo",
         "gsc", "search console", "ga4", "orgânico", "organico",
-        "impressões", "impressao", "posição", "posicao"
+        "impressões", "impressao", "posição", "posicao",
+        "screaming frog", "sf", "crawl", "indexação", "indexacao"
     ]
 
-    if any(term in q for term in ads_terms):
+    if any(t in q for t in ads_kw_terms):
+        return "ADS_KW"
+    if any(t in q for t in ads_terms):
         return "ADS"
-
-    if any(term in q for term in page_terms):
+    if any(t in q for t in page_terms):
         return "PAGE"
 
-    # fallback seguro
     return "PAGE"
+
 
 
 # ---------------- Helpers: SQL ----------------
@@ -386,7 +404,16 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: 
             "- Não use URL, nem métricas de GA4/GSC.\n"
             "- Para rankings, ordene por cost_eur, conversions, clicks ou impressions e use LIMIT.\n"
         )
-
+    elif table_kind == "FACT_ADS_KEYWORDS":
+        rules = (
+            "- A tabela tem uma linha por keyword (ou keyword_id) e dia.\n"
+            "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando `data_date`.\n"
+            "- Métricas: clicks=SUM(clicks), impressions=SUM(impressions), cost_eur=SUM(cost_eur), conversions=SUM(conversions).\n"
+            "- Derivadas: ctr=SAFE_DIVIDE(SUM(clicks), SUM(impressions)), cpc=SAFE_DIVIDE(SUM(cost_eur), NULLIF(SUM(clicks),0)), cpa=SAFE_DIVIDE(SUM(cost_eur), NULLIF(SUM(conversions),0)).\n"
+            "- Dimensões comuns: keyword, match_type, ad_group_name, campaign_name, quality_score.\n"
+            "- Para rankings use ORDER BY e LIMIT.\n"
+            "- Não use URL nem métricas orgânicas.\n"
+        )
     else:
         rules = (
             "- Se a pergunta não trouxer período, filtre os últimos 90 dias usando a coluna `data_date`.\n"
@@ -524,6 +551,8 @@ def _active_bq_table_and_kind(selected_source: str, question: str = ""):
     # Quando estiver no "AI Ready", roteia automaticamente com base na pergunta
     if selected_source.startswith("Rubis Gas – AI Ready"):
         intent = detect_intent(question or "")
+        if intent == "ADS_KW":
+            return BQ_VIEW_ADS_KW, "FACT_ADS_KEYWORDS"
         if intent == "ADS":
             return BQ_VIEW_ADS, "FACT_ADS_CAMPAIGN"
         return BQ_VIEW_AI_READY, "AI_READY"
@@ -578,15 +607,6 @@ source = st.selectbox(
         "Facebook Page Insights (Supermetrics)",
     ],
     index=0,
-)
-
-st.markdown(
-    f"""
-<div class="ds-row">
-  <div class="ds-badge">Usando: {escape(source)}</div>
-</div>
-""",
-    unsafe_allow_html=True,
 )
 
 def _push_assistant_summary_for_source(selected_source: str):
@@ -742,7 +762,7 @@ if st.session_state.pending_job is not None:
                 raise RuntimeError(f"A VIEW não existe. Confirme o nome: {active_table}")
 
             if job["kind"] == "summary":
-                if table_kind == "FACT_ADS_CAMPAIGN":
+                if table_kind in ("FACT_ADS_CAMPAIGN", "FACT_ADS_KEYWORDS"):
                     sql = f"""
                     SELECT
                       SUM(ads_cost_eur) AS cost_eur,
@@ -913,10 +933,16 @@ if st.session_state.pending_job is not None:
             st.session_state.summary_cached[current_source] = msg
             st.session_state.messages.append(msg)
         else:
+            source_label = label_for_table_kind(table_kind)
             st.session_state.messages.append({
                 "role": "assistant",
                 "type": "findings",
-                "intro": "Aqui vai uma resposta objetiva baseada nos dados:",
+                "intro": (
+                    "Aqui vai uma resposta objetiva baseada nos dados "
+                    f"<span style='padding:2px 8px;border-radius:999px;"
+                    f"background:#1f2933;font-size:12px;margin-left:6px;'>"
+                    f"{source_label}</span>"
+                ),
                 "findings": findings,
                 "sql": sql_used,
                 "ts": time.time()
