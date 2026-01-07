@@ -704,12 +704,7 @@ if st.session_state.pending_job is not None:
         current_source = job["source"]
         q_user = job["question"]
 
-        if job["kind"] == "chat":
-            intent = detect_intent(q_user)
-            st.sidebar.caption(f"🔎 Detected intent: {intent}")
-        else:
-            st.sidebar.caption(f"🔎 Summary context: {table_kind}")
-
+        
 
 
 
@@ -726,6 +721,14 @@ if st.session_state.pending_job is not None:
 
             st.sidebar.caption(f"📌 Source: {current_source}")
             st.sidebar.caption(f"📌 Routed to: {table_kind} → {active_table}")
+
+            # ---- Sidebar context (AGORA table_kind já existe) ----
+            if job["kind"] == "chat":
+                intent = detect_intent(q_user)
+                st.sidebar.caption(f"🔎 Detected intent: {intent}")
+            else:
+                st.sidebar.caption(f"🔎 Summary context: {table_kind}")
+
 
             if not active_table:
                 raise RuntimeError("Nenhuma tabela/view configurada. Defina BQ_VIEW_* ou BQ_TABLE.")
