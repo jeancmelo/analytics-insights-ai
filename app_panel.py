@@ -42,7 +42,7 @@ BQ_VIEW_AI_READY = os.getenv("BQ_VIEW_AI_READY", DEFAULT_AI_READY).strip()
 
 SA_JSON = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 OPENAI_KEY = os.getenv("OPENAI_API", "").strip()
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip()
 
 # Logo (black SVG) provided by you
 WYP_LOGO_URL = "https://wyperformance.com/wp-content/themes/wyp/dist/img/logo-wyperformance-black.svg"
