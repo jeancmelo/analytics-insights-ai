@@ -329,46 +329,115 @@ def build_sql_with_ai(question: str, table_fqn: str, columns: list, table_kind: 
     )
     return sanitize_sql(resp.choices[0].message.content.strip())
 
-def ai_key_findings(question: str, df: pd.DataFrame, sql_used: str, n: int = 6):
+def ai_key_findings(
+    question: str,
+    df: pd.DataFrame,
+    sql_used: str,
+    n: int = 6,
+    max_rows: int = 18,
+    max_cols: int = 14,
+    max_cell_chars: int = 220,
+    show_usage_in_sidebar: bool = True,
+):
+    """
+    Gera insights curtos e acionáveis com baixo custo de tokens.
+
+    Estratégia:
+    - Envia uma amostra pequena (rows/cols)
+    - Normaliza strings longas (URLs, titles etc.)
+    - Usa JSON response_format e faz parsing resiliente
+    - Loga tokens (prompt/completion/total) no sidebar
+    """
     if not client:
         return [{"title": "Configuração necessária", "text": "Defina OPENAI_API."}]
-    if df.empty:
+    if df is None or df.empty:
         return [{"title": "Sem dados", "text": "Não há linhas para o recorte solicitado."}]
 
-    preview = df.head(40).to_csv(index=False)
+    # 1) Seleciona um subconjunto de colunas para reduzir tokens
+    cols = list(df.columns)[:max_cols]
+    df_small = df[cols].head(max_rows).copy()
+
+    # 2) Trunca strings longas e normaliza tipos
+    def _truncate(v):
+        if v is None:
+            return None
+        # pandas pode trazer tipos numpy, timestamps etc.
+        if isinstance(v, (pd.Timestamp,)):
+            return v.isoformat()
+        s = str(v)
+        s = s.replace("\n", " ").replace("\r", " ").strip()
+        if len(s) > max_cell_chars:
+            s = s[:max_cell_chars] + "…"
+        return s
+
+    for c in df_small.columns:
+        df_small[c] = df_small[c].map(_truncate)
+
+    # 3) Envia JSON compacto (orient records) em vez de CSV
+    sample_records = df_small.to_dict(orient="records")
+    sample_json = json.dumps(sample_records, ensure_ascii=False)
 
     system = (
-        "Você é um analista de Marketing/SEO. Gere insights curtos e acionáveis "
-        "com base nos dados fornecidos. Responda em JSON válido com a chave 'findings'. "
-        "Não invente números; use apenas o que vier nos dados."
-    )
-    user = (
-        f"Gere até {n} findings (curtos). Estrutura:\n"
-        f'{{"findings":[{{"title":"...", "text":"..."}}]}}\n\n'
-        f"Pergunta do usuário:\n{question}\n\n"
-        f"SQL executada (contexto – não comente):\n{sql_used}\n\n"
-        f"Prévia dos resultados (CSV até 40 linhas):\n{preview}"
+        "Você é um analista de Marketing/SEO. "
+        "Gere insights curtos, objetivos e acionáveis com base APENAS nos dados fornecidos. "
+        "Responda em JSON válido no formato: "
+        '{"findings":[{"title":"...", "text":"..."}]}. '
+        "Não invente números nem causas não suportadas pelos dados."
     )
 
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        temperature=0.2,
-        response_format={"type": "json_object"},
+    # 4) Prompt mais curto: menos contexto = menos tokens
+    user = (
+        f"Pergunta:\n{question}\n\n"
+        f"Dados (amostra em JSON):\n{sample_json}\n\n"
+        "Regras:\n"
+        f"- Gere até {n} findings.\n"
+        "- Cada 'text' deve ser direto e sugerir uma ação ou prioridade.\n"
+        "- Se não houver evidência suficiente, diga isso explicitamente.\n"
     )
 
     try:
-        data = json.loads(resp.choices[0].message.content or "{}")
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+        )
+
+        # 5) Log de tokens no sidebar (quando disponível)
+        if show_usage_in_sidebar and hasattr(resp, "usage") and resp.usage:
+            try:
+                st.sidebar.caption("OpenAI usage (ai_key_findings)")
+                st.sidebar.json(
+                    {
+                        "prompt_tokens": resp.usage.prompt_tokens,
+                        "completion_tokens": resp.usage.completion_tokens,
+                        "total_tokens": resp.usage.total_tokens,
+                        "model": OPENAI_MODEL,
+                    }
+                )
+            except Exception:
+                pass
+
+        content = (resp.choices[0].message.content or "").strip()
+        data = json.loads(content) if content else {}
         findings = data.get("findings", [])
+
         out = []
-        for it in findings[:n]:
+        for it in (findings or [])[:n]:
             title = str(it.get("title", "Insight")).strip()[:120]
             text = str(it.get("text", "")).strip()
             if text:
                 out.append({"title": title or "Insight", "text": text})
-        return out or [{"title": "Sem insights", "text": "Os dados retornados são muito curtos para gerar achados úteis."}]
-    except Exception:
-        return [{"title": "Resumo", "text": resp.choices[0].message.content.strip()}]
+
+        return out or [{"title": "Sem insights", "text": "A amostra retornada é insuficiente para conclusões úteis."}]
+
+    except Exception as e:
+        # Fallback seguro: não quebra o app
+        return [{"title": "Erro ao gerar insights", "text": str(e)}]
+
 
 def _active_bq_table_and_kind(selected_source: str):
     if selected_source.startswith("Rubis Gas – AI Ready"):
