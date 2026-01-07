@@ -772,9 +772,9 @@ if st.session_state.pending_job is not None:
                     sql_used = sql or ""
                     df = pd.DataFrame()
 
-            else:
-                sql = ensure_limit(sql)
-                fallback_used = False
+                else:
+                    sql = ensure_limit(sql)
+                    fallback_used = False
 
                 try:
                     df = bq.query(sql).result().to_dataframe()
