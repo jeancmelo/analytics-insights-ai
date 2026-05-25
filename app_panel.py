@@ -548,14 +548,14 @@ def ai_key_findings(
 
 
 def _active_bq_table_and_kind(selected_source: str, question: str = ""):
-    # Quando estiver no "AI Ready", roteia automaticamente com base na pergunta
+        # Quando estiver no "AI Ready", roteia automaticamente com base na pergunta
     if selected_source.startswith("Rubis Gas – AI Ready"):
         intent = detect_intent(question or "")
         if intent == "ADS_KW":
             return BQ_VIEW_ADS_KW, "FACT_ADS_KEYWORDS"
         if intent == "ADS":
             return BQ_VIEW_ADS, "FACT_ADS_CAMPAIGN"
-        return BQ_VIEW_AI_READY, "AI_READY"
+        return BQ_VIEW_AI_READY, "FACT_GSC"   # ← muda para FACT_GSC
 
     # Mantém as opções manuais FACT
     if selected_source.startswith("Rubis Gas – FACT (GSC"):
